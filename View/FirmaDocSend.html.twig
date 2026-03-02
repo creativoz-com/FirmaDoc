@@ -1,0 +1,261 @@
+{#
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ *
+ * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
+ * @copyright 2025-2026 Francisco José Matías Olivares
+ * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
+ * @version   1.0
+ * @link      https://creativoz.com
+#}
+{% extends "Master/MenuTemplate.html.twig" %}
+
+{% block body %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col">
+
+      {# CABECERA #}
+      <div class="d-flex align-items-center mb-3 mt-3">
+        <i class="fas fa-signature fa-2x text-primary mr-3"></i>
+        <div>
+          <h3 class="mb-0">Enviar para firma</h3>
+          <small class="text-muted">
+            {{ fsc.tipodoc|capitalize }} · {{ fsc.firma.codigo_doc ?? documento.codigo }}
+            {% if documento.nombrecliente is defined %}
+              · {{ fsc.documento.nombrecliente }}
+            {% endif %}
+          </small>
+        </div>
+        <div class="ml-auto">
+          <a href="javascript:history.back()" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-2"></i> Volver
+          </a>
+        </div>
+      </div>
+
+      {# MENSAJE #}
+      {% if fsc.mensaje %}
+        <div style="background-color:{% if fsc.mensajeTipo == 'success' %}#d4edda{% elseif mensajeTipo == 'danger' %}#f8d7da{% elseif mensajeTipo == 'warning' %}#fff3cd{% else %}#d1ecf1{% endif %};border:1px solid {% if fsc.mensajeTipo == 'success' %}#c3e6cb{% elseif mensajeTipo == 'danger' %}#f5c6cb{% elseif mensajeTipo == 'warning' %}#ffeeba{% else %}#bee5eb{% endif %};border-radius:4px;padding:10px 40px 10px 15px;margin-bottom:1rem;position:relative;color:#555;">
+          {{ fsc.mensaje }}
+          <button onclick="this.parentElement.style.display='none'" style="position:absolute;top:50%;right:12px;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:2.4rem;color:#888;line-height:1;padding:0;margin-top:-4px;">&times;</button>
+        </div>
+      {% endif %}
+
+      <div class="row">
+
+        {# COLUMNA IZQUIERDA: Datos del envío #}
+        <div class="col-md-6">
+
+          {# ESTADO ACTUAL #}
+          <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+              <h5 class="mb-0"><i class="fas fa-info-circle mr-2 text-primary"></i> Estado de la firma</h5>
+            </div>
+            <div class="card-body">
+              {% if fsc.firma.id %}
+                <table class="table table-sm mb-0">
+                  <tr>
+                    <td class="font-weight-bold small">Estado</td>
+                    <td>
+                      {% if fsc.firma.estado == 'firmado' %}
+                        <span class="badge badge-success">✓ Firmado</span>
+                      {% elseif fsc.firma.estado == 'pendiente' %}
+                        <span class="badge badge-warning">⏳ Pendiente</span>
+                      {% elseif fsc.firma.estado == 'expirado' %}
+                        <span class="badge badge-secondary">Expirado</span>
+                      {% else %}
+                        <span class="badge badge-danger">Cancelado</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="font-weight-bold small">Enviado</td>
+                    <td class="small">{{ fsc.firma.fecha_envio }}</td>
+                  </tr>
+                  <tr>
+                    <td class="font-weight-bold small">Expira</td>
+                    <td class="small">{{ fsc.firma.fecha_expiracion }}</td>
+                  </tr>
+                  {% if fsc.firma.fecha_firma %}
+                  <tr>
+                    <td class="font-weight-bold small">Firmado el</td>
+                    <td class="small">{{ fsc.firma.fecha_firma }}</td>
+                  </tr>
+                  <tr>
+                    <td class="font-weight-bold small">Firmado por</td>
+                    <td class="small">{{ fsc.firma.firma_nombre }}</td>
+                  </tr>
+                  {% endif %}
+                </table>
+              {% else %}
+                <p class="text-muted mb-0 small">Este documento aún no tiene ninguna solicitud de firma activa.</p>
+              {% endif %}
+            </div>
+          </div>
+
+          {# FORMULARIO GENERAR LINK #}
+          {% if not fsc.firma.id or fsc.firma.estado == 'expirado' or fsc.firma.estado == 'cancelado' %}
+          <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+              <h5 class="mb-0"><i class="fas fa-link mr-2 text-primary"></i> Generar link de firma</h5>
+            </div>
+            <div class="card-body">
+              <form method="post">
+                <input type="hidden" name="action" value="generar">
+                <div class="form-group">
+                  <label class="font-weight-bold small">Email del cliente</label>
+                  <input type="email" class="form-control" name="email_cliente"
+                    value="{{ fsc.emailCliente }}"
+                    placeholder="cliente@ejemplo.com">
+                </div>
+                <div class="form-group">
+                  <label class="font-weight-bold small">Teléfono WhatsApp <span class="text-muted font-weight-normal">(opcional, con prefijo país)</span></label>
+                  <input type="text" class="form-control" name="telefono_cliente"
+                    value="{{ fsc.telefonoCliente }}"
+                    placeholder="34612345678">
+                  <small class="text-muted">Incluye el prefijo del país sin + (ej: 34 para España)</small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                  <i class="fas fa-link mr-2"></i> Generar link de firma
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+
+          {# CANCELAR FIRMA PENDIENTE #}
+          {% if fsc.firma.id and fsc.firma.estado == 'pendiente' %}
+          <div class="card shadow-sm mb-3 border-warning">
+            <div class="card-body">
+              <form method="post" onsubmit="return confirm('¿Seguro que quieres cancelar esta solicitud de firma?')">
+                <input type="hidden" name="action" value="cancelar">
+                <button type="submit" class="btn btn-outline-warning btn-sm">
+                  <i class="fas fa-ban mr-2"></i> Cancelar solicitud de firma
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+
+        </div>{# /col izquierda #}
+
+        {# COLUMNA DERECHA: Envío al cliente #}
+        <div class="col-md-6">
+          {% if fsc.firma.id and fsc.firma.estado == 'pendiente' %}
+
+          {# LINK GENERADO #}
+          <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+              <h5 class="mb-0"><i class="fas fa-share-alt mr-2 text-primary"></i> Enviar al cliente</h5>
+            </div>
+            <div class="card-body">
+
+              {# LINK COPIABLE #}
+              <div class="form-group">
+                <label class="font-weight-bold small">Link de firma</label>
+                <div class="input-group">
+                  <input type="text" class="form-control form-control-sm" id="linkFirma"
+                    value="{{ fsc.linkFirma }}" readonly>
+                  <div class="input-group-append">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="copiarLink()" title="Copiar link">
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  </div>
+                </div>
+                <small class="text-muted">Válido hasta {{ fsc.firma.fecha_expiracion }}</small>
+              </div>
+
+              <hr>
+
+              {# BOTÓN VER DOCUMENTO #}
+              {% if fsc.linkDocumento %}
+              <a href="{{ fsc.linkDocumento }}" target="_blank" class="btn btn-outline-secondary btn-block mb-2">
+                <i class="fas fa-file-pdf mr-2"></i> Ver documento
+              </a>
+              {% endif %}
+
+              {# BOTÓN WHATSAPP #}
+              {% if fsc.linkWhatsApp %}
+              <a href="{{ fsc.linkWhatsApp }}" target="_blank" class="btn btn-success btn-block mb-2">
+                <i class="fab fa-whatsapp mr-2"></i> Enviar por WhatsApp
+              </a>
+              {% else %}
+              <button class="btn btn-success btn-block mb-2" disabled title="Introduce un teléfono para enviar por WhatsApp">
+                <i class="fab fa-whatsapp mr-2"></i> Enviar por WhatsApp
+              </button>
+              <small class="text-muted d-block mb-2">Añade el teléfono del cliente para activar WhatsApp.</small>
+              {% endif %}
+
+              {# BOTÓN EMAIL #}
+              <form method="post">
+                <input type="hidden" name="action" value="enviar_email">
+                <button type="submit" class="btn btn-primary btn-block">
+                  <i class="fas fa-envelope mr-2"></i> Enviar por Email
+                </button>
+              </form>
+
+            </div>
+          </div>
+
+          {# VISTA PREVIA MENSAJE WHATSAPP #}
+          {% if fsc.linkWhatsApp and fsc.config.whatsapp_mensaje %}
+          <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="fab fa-whatsapp mr-2 text-success"></i> Vista previa WhatsApp</h6>
+            </div>
+            <div class="card-body">
+              <div style="background:#dcf8c6;border-radius:8px;padding:12px;font-size:0.85rem;white-space:pre-wrap;font-family:sans-serif;">{{ fsc.mensajeWhatsApp }}</div>
+              <small class="text-muted mt-2 d-block">El cliente recibirá este mensaje con el link de firma.</small>
+            </div>
+          </div>
+          {% endif %}
+
+          {% elseif fsc.firma.id and fsc.firma.estado == 'firmado' %}
+          {# DOCUMENTO YA FIRMADO #}
+          <div class="card shadow-sm mb-3 border-success">
+            <div class="card-header bg-success text-white">
+              <h5 class="mb-0"><i class="fas fa-check-circle mr-2"></i> Documento firmado</h5>
+            </div>
+            <div class="card-body">
+              <p class="mb-2 small"><strong>Firmado por:</strong> {{ fsc.firma.firma_nombre }}</p>
+              {% if fsc.firma.firma_nif %}
+              <p class="mb-2 small"><strong>NIF:</strong> {{ fsc.firma.firma_nif }}</p>
+              {% endif %}
+              {% if fsc.firma.firma_cargo %}
+              <p class="mb-2 small"><strong>Cargo:</strong> {{ fsc.firma.firma_cargo }}</p>
+              {% endif %}
+              <p class="mb-2 small"><strong>Fecha:</strong> {{ fsc.firma.fecha_firma }}</p>
+              <p class="mb-0 small"><strong>IP:</strong> {{ fsc.firma.ip_cliente }}</p>
+              {% if fsc.firma.firma_imagen %}
+              <hr>
+              <label class="font-weight-bold small">Firma:</label><br>
+              <img src="{{ fsc.firma.firma_imagen }}" style="max-width:100%;border:1px solid #dee2e6;border-radius:4px;">
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+        </div>{# /col derecha #}
+
+      </div>{# /row #}
+    </div>
+  </div>
+</div>
+
+<script>
+function copiarLink() {
+  var input = document.getElementById('linkFirma');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(function() {
+    var tooltip = document.createElement('div');
+    tooltip.textContent = 'Copiado';
+    tooltip.style.cssText = 'position:fixed;background:#333;color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;pointer-events:none;z-index:9999;opacity:1;transition:opacity 0.4s ease;top:50%;left:50%;transform:translate(-50%,-50%)';
+    document.body.appendChild(tooltip);
+    setTimeout(function() {
+      tooltip.style.opacity = '0';
+      setTimeout(function() { document.body.removeChild(tooltip); }, 400);
+    }, 800);
+  });
+}
+</script>
+{% endblock %}

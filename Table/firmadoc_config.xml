@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ *
+ * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
+ * @copyright 2025-2026 Francisco José Matías Olivares
+ * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
+ * @version   1.0
+ * @link      https://creativoz.com
+-->
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>dias_validez</name>
+        <type>integer</type>
+        <null>NO</null>
+        <default>15</default>
+    </column>
+    <column>
+        <name>recordatorios_activo</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
+    </column>
+    <column>
+        <name>recordatorio_dias</name>
+        <type>character varying(100)</type>
+        <null>YES</null>
+        <default>'7,3,1'</default>
+    </column>
+    <column>
+        <name>descarga_pdf</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+        <default>'siempre'</default>
+    </column>
+    <column>
+        <name>modo_manuscrita</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>TRUE</default>
+    </column>
+    <column>
+        <name>modo_tipografica</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>TRUE</default>
+    </column>
+    <column>
+        <name>modo_certificado</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
+    </column>
+    <column>
+        <name>nif_modo</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+        <default>'opcional'</default>
+    </column>
+    <column>
+        <name>cargo_modo</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+        <default>'opcional'</default>
+    </column>
+    <column>
+        <name>notif_empresa</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>TRUE</default>
+    </column>
+    <column>
+        <name>email_adicional</name>
+        <type>character varying(150)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>mostrar_logo</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>TRUE</default>
+    </column>
+    <column>
+        <name>legal_url</name>
+        <type>character varying(255)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>legal_texto</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>email_asunto</name>
+        <type>character varying(255)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>email_cuerpo</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>whatsapp_mensaje</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>doc_presupuesto</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>TRUE</default>
+    </column>
+    <column>
+        <name>doc_albaran</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>TRUE</default>
+    </column>
+    <column>
+        <name>doc_factura</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>TRUE</default>
+    </column>
+    <column>
+        <name>doc_pedido</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
+    </column>
+      <column>
+        <name>confirm_asunto</name>
+        <type>character varying(250)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>confirm_cuerpo</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+      <constraint>
+        <name>firmadoc_config_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+</table>

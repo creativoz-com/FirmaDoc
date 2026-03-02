@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ *
+ * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
+ * @copyright 2025-2026 Francisco José Matías Olivares
+ * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
+ * @version   1.0
+ * @link      https://creativoz.com
+-->
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>tipo_doc</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>id_doc</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>codigo_doc</name>
+        <type>character varying(30)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>token</name>
+        <type>character varying(64)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>email_cliente</name>
+        <type>character varying(150)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>telefono_cliente</name>
+        <type>character varying(30)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>fecha_envio</name>
+        <type>timestamp</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>fecha_expiracion</name>
+        <type>timestamp</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>fecha_firma</name>
+        <type>timestamp</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>firma_imagen</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>firma_nombre</name>
+        <type>character varying(150)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>firma_nif</name>
+        <type>character varying(20)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>firma_cargo</name>
+        <type>character varying(100)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>modo_firma</name>
+        <type>character varying(20)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>acepto_legal</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
+    </column>
+    <column>
+        <name>fecha_acepto_legal</name>
+        <type>timestamp</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>ip_cliente</name>
+        <type>character varying(45)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>user_agent</name>
+        <type>character varying(255)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>doc_hash</name>
+        <type>character varying(32)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>estado</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+        <default>'pendiente'</default>
+    </column>
+    <column>
+        <name>recordatorios_enviados</name>
+        <type>integer</type>
+        <null>NO</null>
+        <default>0</default>
+    </column>
+    <column>
+        <name>fecha_ultimo_recordatorio</name>
+        <type>character varying(20)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>email_empresa_notificado</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
+    </column>
+    <column>
+        <name>fecha_primera_apertura</name>
+        <type>timestamp</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>veces_visto</name>
+        <type>integer</type>
+        <null>NO</null>
+        <default>0</default>
+    </column>
+    <column>
+        <name>observaciones_firmante</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>motivo_rechazo</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>firma_certificado_data</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>modo_multifirma</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+        <default>'unico'</default>
+    </column>
+        <constraint>
+        <name>firmadoc_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>firmadoc_token_unique</name>
+        <type>UNIQUE (token)</type>
+    </constraint>
+</table>
