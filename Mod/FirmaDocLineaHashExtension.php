@@ -5,7 +5,7 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.0
+ * @version   1.1
  * @link      https://creativoz.com
  */
 namespace FacturaScripts\Plugins\FirmaDoc\Mod;
