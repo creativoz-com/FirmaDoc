@@ -5,7 +5,7 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.1
+ * @version   1.11
  * @link      https://creativoz.com
  */
 namespace FacturaScripts\Plugins\FirmaDoc;
@@ -199,7 +199,9 @@ class Cron extends CronClass
         $count = 0;
         foreach ($db->select($sql) as $row) {
             $firmante = new FirmaDocFirmante();
-            $firmante->loadFromCode($row['id']);
+            if (!$firmante->loadFromCode($row['id'])) {
+                continue;
+            }
 
             // No enviar más de uno por día
             if ($firmante->fecha_ultimo_recordatorio === date('Y-m-d')) {

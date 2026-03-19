@@ -5,7 +5,7 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.0
+ * @version   1.11
  * @link      https://creativoz.com
  */
 namespace FacturaScripts\Plugins\FirmaDoc\Model;
@@ -169,7 +169,11 @@ class FirmaDoc extends ModelClass
         if (empty($this->fecha_expiracion)) {
             return false;
         }
-        return strtotime($this->fecha_expiracion) < time();
+        $expiracion = \DateTime::createFromFormat('d-m-Y H:i:s', $this->fecha_expiracion);
+        if (!$expiracion) {
+            return false;
+        }
+        return time() >= $expiracion->getTimestamp();
     }
 
     /**

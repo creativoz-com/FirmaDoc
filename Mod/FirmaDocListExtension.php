@@ -5,7 +5,7 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.1
+ * @version   1.11
  * @link      https://creativoz.com
  */
 namespace FacturaScripts\Plugins\FirmaDoc\Mod;
@@ -66,10 +66,10 @@ class FirmaDocListExtension
 
             // Consulta batch: un solo SELECT para toda la página
             $db     = new DataBase();
-            $idsStr = implode(',', $ids);
             $safe   = $db->escapeString($tipo);
+            $idsStr = implode(',', array_map('intval', $ids));
             $sql    = "SELECT id_doc, estado FROM firmadoc
-                       WHERE tipo_doc = '{$safe}' AND id_doc IN ({$idsStr})
+                       WHERE tipo_doc = '" . $safe . "' AND id_doc IN (" . $idsStr . ")
                        ORDER BY id DESC";
 
             $estados = [];

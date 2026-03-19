@@ -5,7 +5,7 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.1
+ * @version   1.11
  * @link      https://creativoz.com
  */
 namespace FacturaScripts\Plugins\FirmaDoc\Lib;
@@ -217,9 +217,13 @@ class FirmaDocPDFExport extends PDFExport
         $this->pdf->setColor(1, 1, 1);
         $this->pdf->addText($marginL + 5, $y - 10, 8, 'CERTIFICADO DIGITAL', $contentW - 10, 'left');
 
-        $certData = !empty($firmante->firma_certificado_data)
-            ? json_decode($firmante->firma_certificado_data, true)
-            : [];
+        $certData = [];
+        if (!empty($firmante->firma_certificado_data)) {
+            $decoded = json_decode($firmante->firma_certificado_data, true);
+            if (is_array($decoded)) {
+                $certData = $decoded;
+            }
+        }
 
         $yc = $y - 22;
         foreach ([
@@ -246,7 +250,9 @@ class FirmaDocPDFExport extends PDFExport
             return null;
         }
         $path = sys_get_temp_dir() . '/firmadoc_sig_' . uniqid() . '.png';
-        file_put_contents($path, $bytes);
+        if (file_put_contents($path, $bytes) === false) {
+            return null;
+        }
         return $path;
     }
 
