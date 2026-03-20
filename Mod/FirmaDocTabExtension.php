@@ -30,7 +30,7 @@ class FirmaDocTabExtension
                 'FirmaDocTab',          // nombre de la vista (id único)
                 'FirmaDocTab',          // archivo Twig: View/FirmaDocTab.html.twig
                 'FirmaDoc',             // modelo base (namespace Dinamic se añade automáticamente)
-                'Firmas',              // título de la pestaña
+                \FacturaScripts\Core\Tools::lang()->trans('firmadoc-tab-signatures'),              // título de la pestaña
                 'fas fa-signature'      // icono
             );
         };
@@ -122,7 +122,7 @@ class FirmaDocTabExtension
                     return 'https://wa.me/' . ltrim($tel, '+') . '?text=' . $codificado;
                 };
 
-                if (!empty($f->firmantes)) {
+                if (!empty($f->firmantes) && $f->modo_multifirma !== FirmaDoc::MODO_UNICO) {
                     // Multi-firmante: link por firmante individual (token propio)
                     foreach ($f->firmantes as $firmante) {
                         if ($firmante->estado === FirmaDocFirmante::ESTADO_PENDIENTE && !empty($firmante->telefono)) {
@@ -130,10 +130,16 @@ class FirmaDocTabExtension
                             if ($link) $whatsappLinks['firmante_' . $firmante->id] = $link;
                         }
                     }
-                } elseif (!empty($f->telefono_cliente)) {
-                    // Modo único clásico: token maestro
-                    $link = $buildWaLink($mainModel->nombrecliente ?? '', $f->telefono_cliente, $f->token, $f);
-                    if ($link) $whatsappLinks[$f->id] = $link;
+                } else {
+                    // Modo único: token maestro, usa telefono del firmante o del cliente
+                    $telefono = $f->telefono_cliente;
+                    if (empty($telefono) && !empty($f->firmantes)) {
+                        $telefono = $f->firmantes[0]->telefono ?? '';
+                    }
+                    if (!empty($telefono)) {
+                        $link = $buildWaLink($mainModel->nombrecliente ?? '', $telefono, $f->token, $f);
+                        if ($link) $whatsappLinks[$f->id] = $link;
+                    }
                 }
             }
 
@@ -255,7 +261,7 @@ class FirmaDocTabExtension
 
             // Bloquear si el documento no es editable
             if (property_exists($mainModel, 'editable') && !$mainModel->editable) {
-                \FacturaScripts\Core\Tools::log()->warning('No se puede solicitar firma: el documento no está en un estado editable.');
+                \FacturaScripts\Core\Tools::log()->warning(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-doc-not-editable'));
                 return;
             }
 
@@ -358,13 +364,11 @@ class FirmaDocTabExtension
             $n = count($firmantesData);
             if (!empty($emailsEnviados)) {
                 \FacturaScripts\Core\Tools::log()->notice(
-                    '✓ Enlace de firma generado y email enviado'
-                    . ($n > 1 ? ' en modo ' . $modoMulti : '')
-                    . ' a: ' . implode(', ', $emailsEnviados)
+                    \FacturaScripts\Core\Tools::lang()->trans('firmadoc-link-generated-sent', ['%mode%' => $modoMulti, '%emails%' => implode(', ', $emailsEnviados)])
                 );
             } else {
-                \FacturaScripts\Core\Tools::log()->notice('Enlace generado correctamente.');
-                \FacturaScripts\Core\Tools::log()->warning('No se pudo enviar el email. Revisa la configuración de correo en FacturaScripts.');
+                \FacturaScripts\Core\Tools::log()->notice(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-link-generated-ok'));
+                \FacturaScripts\Core\Tools::log()->warning(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-email-send-failed'));
             }
         };
     }
@@ -381,7 +385,7 @@ class FirmaDocTabExtension
             if ($firma->loadFromCode($idFirma) && $firma->tipo_doc === $tipo) {
                 $firma->estado = FirmaDoc::ESTADO_CANCELADO;
                 $firma->save();
-                \FacturaScripts\Core\Tools::log()->notice('FirmaDoc: Enlace cancelado.');
+                \FacturaScripts\Core\Tools::log()->notice(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-link-cancelled-notice'));
             }
         };
     }

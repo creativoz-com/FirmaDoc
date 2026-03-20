@@ -4,15 +4,15 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.0
+ * @version   1.11
  * @link      https://creativoz.com
 #}
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ constant('FS_LANG') }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ fsc.firma.codigo_doc ?? 'Firma de documento' }} — Firma electrónica</title>
+    <title>{{ fsc.firma.codigo_doc ?? trans('firmadoc-title') }} — {{ trans('firmadoc-electronic-signature') }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
@@ -24,9 +24,12 @@
         .firma-body { padding: 28px 32px; }
         #canvas-firma { border: 2px dashed #dee2e6; border-radius: 8px; cursor: crosshair; background: #fafafa; touch-action: none; width: 100%; }
         #canvas-firma.activo { border-color: #1a7a4a; background: #fff; }
-        .tab-modo { cursor: pointer; padding: 10px 20px; border-radius: 8px 8px 0 0; border: 1px solid #dee2e6; border-bottom: none; background: #f8f9fa; font-size: 0.9rem; }
-        .tab-modo.activo { background: #fff; font-weight: 600; color: #1a7a4a; border-bottom: 1px solid #fff; margin-bottom: -1px; }
-        .panel-modo { border: 1px solid #dee2e6; border-radius: 0 8px 8px 8px; padding: 20px; background: #fff; }
+        .tabs-modo { display: flex; background: #f0f0f0; border-radius: 10px; padding: 3px; margin-bottom: 16px; gap: 3px; }
+        .tab-modo { cursor: pointer; flex: 1; text-align: center; padding: 10px 6px 8px; border-radius: 8px; border: none; background: transparent; font-size: 0.75rem; color: #666; transition: all 0.2s ease; line-height: 1.2; }
+        .tab-modo i { display: block; font-size: 1.3rem; margin-bottom: 4px; }
+        .tab-modo span { display: block; }
+        .tab-modo.activo { background: #fff; font-weight: 600; color: #1a7a4a; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .panel-modo { border: 1px solid #dee2e6; border-radius: 10px; padding: 20px; background: #fff; }
         .firma-tipografica-preview { font-family: 'Dancing Script', cursive; font-size: 2.5rem; color: #1a4a8a; min-height: 80px; border-bottom: 2px solid #dee2e6; text-align: center; padding: 10px; letter-spacing: 2px; }
         .btn-firmar { background: linear-gradient(135deg, #1a7a4a, #2ecc71); border: none; color: #fff; padding: 14px 40px; font-size: 1.1rem; font-weight: 600; border-radius: 8px; width: 100%; margin-top: 10px; }
         .btn-firmar:hover { opacity: 0.9; color: #fff; }
@@ -45,8 +48,8 @@
 
     {# CABECERA #}
     <div class="firma-header">
-        <h1><i class="fas fa-signature mr-2"></i> Firma electrónica</h1>
-        <p>Por favor, revisa el documento y fírmalo a continuación</p>
+        <h1><i class="fas fa-signature mr-2"></i> {{ trans('firmadoc-electronic-signature') }}</h1>
+        <p>{{ trans('firmadoc-review-and-sign') }}</p>
     </div>
 
     <div class="firma-body">
@@ -70,10 +73,10 @@
         <div style="background:#f8f9fa;border-radius:8px;padding:12px 16px;margin-bottom:16px;border:1px solid #dee2e6">
           <div class="d-flex justify-content-between align-items-center mb-1">
             <small class="font-weight-bold text-secondary">
-              <i class="fas fa-users mr-1"></i>Proceso de firma
+              <i class="fas fa-users mr-1"></i>{{ trans('firmadoc-signing-progress') }}
             </small>
             <small class="text-secondary">
-              {{ fsc.firmantesHanFirmado }} de {{ fsc.firmantesTotal }} firmantes
+              {{ trans('firmadoc-x-of-y-signers', {'%signed%': fsc.firmantesHanFirmado, '%total%': fsc.firmantesTotal}) }}
             </small>
           </div>
           <div style="background:#dee2e6;border-radius:4px;height:8px;overflow:hidden">
@@ -84,23 +87,22 @@
         {% endif %}
 
         {# INFO DEL DOCUMENTO + VISOR PDF INLINE #}
-        {# En multi-firmante parcial: ocultar el visor hasta que firmen todos o mostrar aviso #}
         {% if fsc.firma %}
         <div class="doc-info">
             <div class="row align-items-center">
                 <div class="col-6">
-                    <strong>Documento:</strong><br>
+                    <strong>{{ trans('firmadoc-document') }}:</strong><br>
                     {{ fsc.firma.tipo_doc|capitalize }} {{ fsc.firma.codigo_doc }}
                 </div>
                 <div class="col-6">
                     {% if fsc.firma.estado == 'firmado' %}
-                    <strong>Firmado el:</strong><br>
+                    <strong>{{ trans('firmadoc-signed-on') }}:</strong><br>
                     {{ fsc.firma.fecha_firma }}
                     {% elseif fsc.firma.estado == 'cancelado' %}
-                    <strong>Estado:</strong><br>
-                    <span style="color:#c0392b;font-weight:600;">Rechazado</span>
+                    <strong>{{ trans('firmadoc-status') }}:</strong><br>
+                    <span style="color:#c0392b;font-weight:600;">{{ trans('firmadoc-status-rejected') }}</span>
                     {% else %}
-                    <strong>Válido hasta:</strong><br>
+                    <strong>{{ trans('firmadoc-valid-until') }}:</strong><br>
                     {{ fsc.firma.fecha_expiracion }}
                     {% endif %}
                 </div>
@@ -118,9 +120,7 @@
             {% if esMultiFirmanteParcial %}
             <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:0.85em;color:#5d4037">
               <i class="fas fa-info-circle mr-1" style="color:#f9a825"></i>
-              <strong>Nota:</strong> El documento que se muestra a continuación corresponde al original sin firmas.
-              Las firmas electrónicas se incorporarán al documento una vez que todos los firmantes hayan completado el proceso.
-              El presente proceso de firma tiene plena validez jurídica conforme al Reglamento (UE) 910/2014 (eIDAS).
+              {{ trans('firmadoc-note-original-document') | raw }}
             </div>
             {% endif %}
             <div class="mt-3">
@@ -131,11 +131,11 @@
                     <span style="font-weight:600;color:#2c5aa0;">
                         <i class="fas fa-file-pdf mr-2" style="color:#e53935;"></i>
                         {% if fsc.firma.estado == 'firmado' %}
-                            Ver documento firmado
+                            {{ trans('firmadoc-view-signed-document') }}
                         {% elseif fsc.firmantesHanFirmado > 0 and fsc.firmantesTotal > 1 %}
-                            Ver documento ({{ fsc.firmantesHanFirmado }}/{{ fsc.firmantesTotal }} firmas)
+                            {{ trans('firmadoc-view-document-progress', {'%signed%': fsc.firmantesHanFirmado, '%total%': fsc.firmantesTotal}) }}
                         {% else %}
-                            Ver documento antes de firmar
+                            {{ trans('firmadoc-view-document-before-signing') }}
                         {% endif %}
                     </span>
                     <span id="pdf-toggle-icon" style="color:#2c5aa0;font-size:1.1em;">
@@ -145,15 +145,15 @@
                 <div id="pdf-viewer" style="display:none;margin-top:6px;border-radius:8px;overflow:hidden;border:1px solid #c8d8f8;">
                     <iframe src="{{ fsc.linkDocumento }}#toolbar=1&navpanes=0&scrollbar=1"
                             style="width:100%;height:420px;border:none;display:block;"
-                            title="Vista previa del documento">
-                        <p>Tu navegador no soporta la vista previa.
-                           <a href="{{ fsc.linkDocumento }}" target="_blank">Descarga el PDF aquí</a>.
+                            title="{{ trans('firmadoc-view-document-before-signing') }}">
+                        <p>{{ trans('firmadoc-browser-no-preview') }}
+                           <a href="{{ fsc.linkDocumento }}" target="_blank">{{ trans('firmadoc-download-pdf-here') }}</a>.
                         </p>
                     </iframe>
                     <div style="background:#f8f9ff;padding:8px 12px;text-align:right;border-top:1px solid #e0e8ff;">
                         <a href="{{ fsc.linkDocumento }}" target="_blank"
                            style="font-size:0.82em;color:#2c5aa0;text-decoration:none;">
-                            <i class="fas fa-external-link-alt mr-1"></i> Abrir en nueva pestaña
+                            <i class="fas fa-external-link-alt mr-1"></i> {{ trans('firmadoc-open-new-tab') }}
                         </a>
                     </div>
                 </div>
@@ -177,20 +177,26 @@
             {% if fsc.config.modo_certificado %} {% set modos = modos|merge(['certificado']) %} {% endif %}
 
             {% if modos|length > 1 %}
-            <div class="d-flex mb-0 flex-wrap">
+            <div class="tabs-modo">
                 {% if fsc.config.modo_manuscrita %}
                 <div class="tab-modo activo" onclick="cambiarModo('manuscrita', this)">
-                    <i class="fas fa-pen mr-1"></i> Firma manuscrita
+                    <i class="fas fa-pen"></i>
+                    <span>{{ trans('firmadoc-tab-handwritten-line1') }}</span>
+                    <span>{{ trans('firmadoc-tab-handwritten-line2') }}</span>
                 </div>
                 {% endif %}
                 {% if fsc.config.modo_tipografica %}
                 <div class="tab-modo" onclick="cambiarModo('tipografica', this)">
-                    <i class="fas fa-font mr-1"></i> Firma tipográfica
+                    <i class="fas fa-font"></i>
+                    <span>{{ trans('firmadoc-tab-typographic-line1') }}</span>
+                    <span>{{ trans('firmadoc-tab-typographic-line2') }}</span>
                 </div>
                 {% endif %}
                 {% if fsc.config.modo_certificado %}
                 <div class="tab-modo" onclick="cambiarModo('certificado', this)">
-                    <i class="fas fa-id-card mr-1"></i> Certificado digital
+                    <i class="fas fa-id-card"></i>
+                    <span>{{ trans('firmadoc-tab-certificate-line1') }}</span>
+                    <span>{{ trans('firmadoc-tab-certificate-line2') }}</span>
                 </div>
                 {% endif %}
             </div>
@@ -199,11 +205,11 @@
             {# PANEL MANUSCRITA #}
             {% if fsc.config.modo_manuscrita %}
             <div class="panel-modo" id="panel-manuscrita">
-                <p class="text-muted small mb-2">Dibuja tu firma en el recuadro:</p>
+                <p class="text-muted small mb-2">{{ trans('firmadoc-draw-signature') }}</p>
                 <canvas id="canvas-firma" height="160"></canvas>
                 <div class="mt-2 text-right">
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limpiarCanvas()">
-                        <i class="fas fa-eraser mr-1"></i> Borrar
+                        <i class="fas fa-eraser mr-1"></i> {{ trans('firmadoc-clear') }}
                     </button>
                 </div>
             </div>
@@ -212,9 +218,9 @@
             {# PANEL TIPOGRÁFICA #}
             {% if fsc.config.modo_tipografica %}
             <div class="panel-modo {% if fsc.config.modo_manuscrita %}d-none{% endif %}" id="panel-tipografica">
-                <p class="text-muted small mb-2">Escribe tu nombre completo:</p>
+                <p class="text-muted small mb-2">{{ trans('firmadoc-type-full-name') }}</p>
                 <input type="text" class="form-control mb-3" id="nombre-tipografico"
-                    placeholder="Tu nombre completo"
+                    placeholder="{{ trans('firmadoc-your-full-name') }}"
                     oninput="actualizarFirmaTipografica(this.value)">
                 <div class="firma-tipografica-preview" id="preview-tipografica"></div>
             </div>
@@ -224,19 +230,37 @@
             {% if fsc.config.modo_certificado %}
             <div class="panel-modo {% if fsc.config.modo_manuscrita or fsc.config.modo_tipografica %}d-none{% endif %}"
                  id="panel-certificado">
+                {# Info para móvil: necesita app AutoFirma #}
+                <div id="cert-mobile-info" style="display:none;padding:14px;border-radius:8px;
+                     background:#e8f4fd;border:1px solid #bee5eb;margin-bottom:12px;">
+                    <p class="small mb-2" style="color:#0c5460;">
+                        <i class="fas fa-mobile-alt mr-1"></i>
+                        <strong>{{ trans('firmadoc-cert-mobile-title') }}</strong><br>
+                        {{ trans('firmadoc-cert-mobile-desc') }}
+                    </p>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+                        <a href="https://play.google.com/store/apps/details?id=es.gob.afirma" target="_blank"
+                           class="btn btn-sm" style="background:#34a853;color:#fff;">
+                            <i class="fab fa-google-play mr-1"></i> {{ trans('firmadoc-cert-mobile-android') }}
+                        </a>
+                        <a href="https://apps.apple.com/es/app/autofirma-app/id627410001" target="_blank"
+                           class="btn btn-sm" style="background:#007aff;color:#fff;">
+                            <i class="fab fa-apple mr-1"></i> {{ trans('firmadoc-cert-mobile-ios') }}
+                        </a>
+                    </div>
+                </div>
                 <p class="text-muted small mb-2">
-                    Firma con tu certificado electrónico instalado en el navegador
-                    (DNIe, FNMT, Camerfirma, etc.).
+                    {{ trans('firmadoc-sign-with-certificate') }}
                 </p>
                 <div id="cert-estado" style="padding:14px;border-radius:8px;background:#f8f9fa;
                      border:1px solid #dee2e6;text-align:center;">
                     <i class="fas fa-id-card fa-2x text-muted mb-2 d-block"></i>
                     <button type="button" class="btn btn-outline-primary btn-sm" onclick="iniciarAutofirma()">
-                        <i class="fas fa-search mr-1"></i> Seleccionar certificado
+                        <i class="fas fa-search mr-1"></i> {{ trans('firmadoc-select-certificate') }}
                     </button>
-                    <p class="text-muted small mt-2 mb-0">
-                        Necesitas tener <strong>AutoFirma</strong> instalado.
-                        <a href="https://firmaelectronica.gob.es/Home/Descargas.html" target="_blank">Descargar</a>
+                    <p class="text-muted small mt-2 mb-0" id="cert-desktop-help">
+                        {{ trans('firmadoc-need-autofirma') | raw }}
+                        <a href="https://firmaelectronica.gob.es/Home/Descargas.html" target="_blank">{{ trans('firmadoc-download') }}</a>
                     </p>
                 </div>
                 <div id="cert-info" style="display:none;padding:14px;border-radius:8px;
@@ -244,12 +268,12 @@
                     <i class="fas fa-check-circle text-success mr-2"></i>
                     <strong id="cert-nombre-display"></strong><br>
                     <small class="text-muted">
-                        NIF: <span id="cert-nif-display"></span> &nbsp;·&nbsp;
-                        Válido hasta: <span id="cert-expiry-display"></span>
+                        {{ trans('firmadoc-nif-dni') }}: <span id="cert-nif-display"></span> &nbsp;·&nbsp;
+                        {{ trans('firmadoc-valid-until-cert') }}: <span id="cert-expiry-display"></span>
                     </small>
                     <br><br>
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="iniciarAutofirma()">
-                        <i class="fas fa-sync mr-1"></i> Cambiar certificado
+                        <i class="fas fa-sync mr-1"></i> {{ trans('firmadoc-change-certificate') }}
                     </button>
                 </div>
             </div>
@@ -258,15 +282,15 @@
             {# CAMPOS ADICIONALES #}
             <div class="mt-3">
                 <div class="form-group">
-                    <label class="font-weight-bold small">Nombre completo <span class="text-danger">*</span></label>
+                    <label class="font-weight-bold small">{{ trans('firmadoc-full-name') }} <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" name="firma_nombre" id="firma_nombre_input"
-                        placeholder="Nombre y apellidos" required>
+                        placeholder="{{ trans('firmadoc-name-and-surnames') }}" required>
                 </div>
 
                 {% if fsc.config.nif_modo != 'no' %}
                 <div class="form-group">
                     <label class="font-weight-bold small">
-                        NIF / DNI
+                        {{ trans('firmadoc-nif-dni') }}
                         {% if fsc.config.nif_modo == 'obligatorio' %}<span class="text-danger">*</span>{% endif %}
                     </label>
                     <input type="text" class="form-control" name="firma_nif" id="firma_nif_input"
@@ -278,11 +302,11 @@
                 {% if fsc.config.cargo_modo != 'no' %}
                 <div class="form-group">
                     <label class="font-weight-bold small">
-                        Cargo
+                        {{ trans('firmadoc-position') }}
                         {% if fsc.config.cargo_modo == 'obligatorio' %}<span class="text-danger">*</span>{% endif %}
                     </label>
                     <input type="text" class="form-control" name="firma_cargo"
-                        placeholder="Director, Gerente..."
+                        placeholder="{{ trans('firmadoc-position-placeholder') }}"
                         {% if fsc.config.cargo_modo == 'obligatorio' %}required{% endif %}>
                 </div>
                 {% endif %}
@@ -293,13 +317,13 @@
                         <input type="checkbox" class="custom-control-input" id="acepto_legal"
                             name="acepto_legal" value="1" required>
                         <label class="custom-control-label small" for="acepto_legal">
-                            Acepto
+                            {{ trans('firmadoc-accept-legal') }}
                             {% if fsc.config.legal_url %}
-                                <a href="{{ fsc.config.legal_url }}" target="_blank">el aviso legal</a>
+                                <a href="{{ fsc.config.legal_url }}" target="_blank">{{ trans('firmadoc-legal-notice') }}</a>
                             {% else %}
-                                el aviso legal
+                                {{ trans('firmadoc-legal-notice') }}
                             {% endif %}
-                            y presto mi consentimiento para la firma electrónica de este documento.
+                            {{ trans('firmadoc-legal-consent') }}
                         </label>
                     </div>
                 </div>
@@ -309,10 +333,10 @@
                 <div class="form-group mt-2">
                     <label class="small text-muted" for="observaciones_firmante">
                         <i class="fas fa-comment-alt mr-1"></i>
-                        Observaciones <span class="text-muted">(opcional)</span>
+                        {{ trans('firmadoc-observations') }} <span class="text-muted">{{ trans('firmadoc-optional') }}</span>
                     </label>
                     <textarea id="observaciones_firmante" name="observaciones_firmante" rows="2"
-                              placeholder="Añade cualquier comentario o condición antes de firmar..."
+                              placeholder="{{ trans('firmadoc-observations-placeholder') }}"
                               style="width:100%;border:1px solid #ddd;border-radius:8px;
                                      padding:10px;font-size:0.88em;resize:vertical;
                                      font-family:inherit;"></textarea>
@@ -320,7 +344,7 @@
             </div>
 
             <button type="submit" class="btn btn-firmar" onclick="return prepararFirma()">
-                <i class="fas fa-check-circle mr-2"></i> Firmar documento
+                <i class="fas fa-check-circle mr-2"></i> {{ trans('firmadoc-sign-document') }}
             </button>
         </form>
 
@@ -329,7 +353,7 @@
             <button type="button" onclick="document.getElementById('modal-rechazo').style.display='flex'"
                     style="background:none;border:none;color:#999;font-size:0.85em;cursor:pointer;
                            text-decoration:underline;padding:4px 8px;">
-                <i class="fas fa-times-circle mr-1"></i> No quiero firmar este documento
+                <i class="fas fa-times-circle mr-1"></i> {{ trans('firmadoc-dont-want-to-sign') }}
             </button>
         </div>
 
@@ -340,20 +364,20 @@
             <div style="background:#fff;border-radius:12px;padding:28px;max-width:420px;width:90%;
                         box-shadow:0 8px 32px rgba(0,0,0,0.2);">
                 <h5 style="margin-bottom:16px;color:#c0392b;">
-                    <i class="fas fa-times-circle mr-2"></i> Rechazar documento
+                    <i class="fas fa-times-circle mr-2"></i> {{ trans('firmadoc-reject-document') }}
                 </h5>
                 <p class="text-muted small mb-3">
-                    Por favor indícanos el motivo para que podamos atenderte correctamente.
+                    {{ trans('firmadoc-reject-reason-help') }}
                 </p>
                 <form method="post" id="formRechazo">
                     <input type="hidden" name="action" value="rechazar">
                     <input type="text" name="rechazo_nombre" required
-                           placeholder="Tu nombre completo *"
+                           placeholder="{{ trans('firmadoc-your-full-name-required') }}"
                            style="width:100%;border:1px solid #ddd;border-radius:8px;
                                   padding:10px;font-size:0.9em;margin-bottom:10px;
                                   box-sizing:border-box;">
                     <textarea name="motivo_rechazo" rows="3" required
-                              placeholder="Motivo del rechazo *"
+                              placeholder="{{ trans('firmadoc-reject-reason-required') }}"
                               style="width:100%;border:1px solid #ddd;border-radius:8px;
                                      padding:10px;font-size:0.9em;resize:vertical;
                                      box-sizing:border-box;"></textarea>
@@ -362,13 +386,13 @@
                                 onclick="document.getElementById('modal-rechazo').style.display='none'"
                                 style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;
                                        background:#f8f9fa;cursor:pointer;font-size:0.9em;">
-                            Cancelar
+                            {{ trans('firmadoc-cancel') }}
                         </button>
                         <button type="submit"
                                 style="flex:1;padding:10px;border:none;border-radius:8px;
                                        background:#c0392b;color:#fff;cursor:pointer;
                                        font-size:0.9em;font-weight:600;">
-                            <i class="fas fa-times mr-1"></i> Confirmar rechazo
+                            <i class="fas fa-times mr-1"></i> {{ trans('firmadoc-confirm-reject') }}
                         </button>
                     </div>
                 </form>
@@ -378,7 +402,7 @@
 
         {# PIE #}
         <div class="mt-4 text-center text-muted small">
-            <i class="fas fa-lock mr-1"></i> Firma electrónica segura
+            <i class="fas fa-lock mr-1"></i> {{ trans('firmadoc-secure-signature') }}
         </div>
 
     </div>
@@ -387,14 +411,62 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
 {% if fsc.config.modo_certificado %}
 <script>
-// Desactivar el diálogo de soporte propio de AutoScript para gestionar nosotros los errores
 SupportDialog.enableSupportDialog(false);
 SupportDialog.enableLoadingDialog(false);
-// Inicializar AutoFirma al cargar la página (§6.1 del Manual del Integrador v1.9)
 AutoScript.cargarAppAfirma();
 </script>
 {% endif %}
 <script>
+// Translation strings for JavaScript
+var FD_TRANS = {
+    alertEnterName: {{ trans('firmadoc-alert-enter-name') | json_encode | raw }},
+    alertDrawSignature: {{ trans('firmadoc-alert-draw-signature') | json_encode | raw }},
+    alertSelectCertificate: {{ trans('firmadoc-alert-select-certificate') | json_encode | raw }},
+    startingAutofirma: {{ trans('firmadoc-starting-autofirma') | json_encode | raw }},
+    couldNotLoadClient: {{ trans('firmadoc-could-not-load-client') | json_encode | raw }},
+    retry: {{ trans('firmadoc-retry') | json_encode | raw }},
+    selectionCancelled: {{ trans('firmadoc-selection-cancelled') | json_encode | raw }},
+    selectCertificate: {{ trans('firmadoc-select-certificate') | json_encode | raw }},
+    errorAutofirma: {{ trans('firmadoc-error-autofirma') | json_encode | raw }},
+    unexpectedError: {{ trans('firmadoc-unexpected-error') | json_encode | raw }},
+    certificateSelected: {{ trans('firmadoc-certificate-selected') | json_encode | raw }},
+    signedWithCertificate: {{ trans('firmadoc-signed-with-certificate') | json_encode | raw }},
+    needAutofirma: {{ trans('firmadoc-need-autofirma') | json_encode | raw }},
+    download: {{ trans('firmadoc-download') | json_encode | raw }},
+    configNeededTitle: {{ trans('firmadoc-config-needed-title') | json_encode | raw }},
+    configNeededDesc: {{ trans('firmadoc-config-needed-desc') | json_encode | raw }},
+    alreadyInstalledRetry: {{ trans('firmadoc-already-installed-retry') | json_encode | raw }},
+    changeMethodWarning: {{ trans('firmadoc-change-method-warning') | json_encode | raw }},
+    certFieldLocked: {{ trans('firmadoc-cert-field-locked') | json_encode | raw }},
+    nifDni: {{ trans('firmadoc-nif-dni') | json_encode | raw }},
+    certMobileNotInstalled: {{ trans('firmadoc-cert-mobile-not-installed') | json_encode | raw }},
+    certWin1: {{ trans('firmadoc-cert-win-1') | json_encode | raw }},
+    certWin2: {{ trans('firmadoc-cert-win-2') | json_encode | raw }},
+    certWin3: {{ trans('firmadoc-cert-win-3') | json_encode | raw }},
+    certWin4: {{ trans('firmadoc-cert-win-4') | json_encode | raw }},
+    certWin5: {{ trans('firmadoc-cert-win-5') | json_encode | raw }},
+    certMac1: {{ trans('firmadoc-cert-mac-1') | json_encode | raw }},
+    certMac2: {{ trans('firmadoc-cert-mac-2') | json_encode | raw }},
+    certMac3: {{ trans('firmadoc-cert-mac-3') | json_encode | raw }},
+    certMac4: {{ trans('firmadoc-cert-mac-4') | json_encode | raw }},
+    certLinux1: {{ trans('firmadoc-cert-linux-1') | json_encode | raw }},
+    certLinux2: {{ trans('firmadoc-cert-linux-2') | json_encode | raw }},
+    certFf1: {{ trans('firmadoc-cert-ff-1') | json_encode | raw }},
+    certFf2: {{ trans('firmadoc-cert-ff-2') | json_encode | raw }},
+    certFf3: {{ trans('firmadoc-cert-ff-3') | json_encode | raw }},
+    certFf4: {{ trans('firmadoc-cert-ff-4') | json_encode | raw }},
+    certFf5: {{ trans('firmadoc-cert-ff-5') | json_encode | raw }}
+};
+
+// === DETECCIÓN MÓVIL PARA CERTIFICADO DIGITAL ===
+var esMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+if (esMobile) {
+    var mobileInfo = document.getElementById('cert-mobile-info');
+    var desktopHelp = document.getElementById('cert-desktop-help');
+    if (mobileInfo) mobileInfo.style.display = 'block';
+    if (desktopHelp) desktopHelp.style.display = 'none';
+}
+
 // === VISOR PDF INLINE ===
 function togglePdf() {
     const viewer = document.getElementById('pdf-viewer');
@@ -409,6 +481,7 @@ function togglePdf() {
 // === PAD DE FIRMA MANUSCRITA ===
 const canvas = document.getElementById('canvas-firma');
 let ctx, dibujando = false, modoActual = '{% if fsc.config.modo_manuscrita %}manuscrita{% elseif fsc.config.modo_tipografica %}tipografica{% else %}certificado{% endif %}';
+let firmaBackup = null; // ImageData backup para preservar firma en resize
 
 if (canvas) {
     ctx = canvas.getContext('2d');
@@ -429,11 +502,29 @@ if (canvas) {
 
 function ajustarCanvas() {
     const w = canvas.parentElement.clientWidth - 40;
+    // Guardar firma antes de redimensionar (canvas.width = X borra el contenido)
+    var backupImg = null;
+    var oldW = canvas.width;
+    var oldH = canvas.height;
+    if (oldW > 0 && oldH > 0) {
+        try { backupImg = ctx.getImageData(0, 0, oldW, oldH); } catch(e) {}
+    }
     canvas.width = w;
     ctx.strokeStyle = '#1a1a2e';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    // Restaurar firma si existía
+    if (backupImg && oldW === w) {
+        ctx.putImageData(backupImg, 0, 0);
+    } else if (backupImg) {
+        // Si cambió el ancho, redibujar escalado via imagen temporal
+        var tempCanvas = document.createElement('canvas');
+        tempCanvas.width = oldW;
+        tempCanvas.height = oldH;
+        tempCanvas.getContext('2d').putImageData(backupImg, 0, 0);
+        ctx.drawImage(tempCanvas, 0, 0, w, canvas.height);
+    }
 }
 
 function getPosicion(e) {
@@ -489,36 +580,32 @@ function _desbloquearCamposIdentidad() {
 function _anularCertificado() {
     certSeleccionado = null;
 
-    // Resetear panel certificado al estado inicial
-    const estadoDiv = document.getElementById('cert-estado');
-    const infoDiv   = document.getElementById('cert-info');
+    var estadoDiv = document.getElementById('cert-estado');
+    var infoDiv   = document.getElementById('cert-info');
     if (estadoDiv) {
         estadoDiv.innerHTML =
             '<i class="fas fa-id-card fa-2x text-muted mb-2 d-block"></i>' +
             '<button type="button" class="btn btn-outline-primary btn-sm" onclick="iniciarAutofirma()">' +
-            '<i class="fas fa-search mr-1"></i> Seleccionar certificado</button>' +
-            '<p class="text-muted small mt-2 mb-0">Necesitas tener <strong>AutoFirma</strong> instalado. ' +
-            '<a href="https://firmaelectronica.gob.es/Home/Descargas.html" target="_blank">Descargar</a></p>';
+            '<i class="fas fa-search mr-1"></i> ' + FD_TRANS.selectCertificate + '</button>' +
+            '<p class="text-muted small mt-2 mb-0">' + FD_TRANS.needAutofirma + ' ' +
+            '<a href="https://firmaelectronica.gob.es/Home/Descargas.html" target="_blank">' + FD_TRANS.download + '</a></p>';
         estadoDiv.style.display = 'block';
     }
     if (infoDiv) infoDiv.style.display = 'none';
 
-    // Limpiar campos de identidad
-    const nombreInput = document.getElementById('firma_nombre_input');
-    const nifInput    = document.getElementById('firma_nif_input');
+    var nombreInput = document.getElementById('firma_nombre_input');
+    var nifInput    = document.getElementById('firma_nif_input');
     if (nombreInput) nombreInput.value = '';
     if (nifInput)    nifInput.value    = '';
     _desbloquearCamposIdentidad();
 
-    // Limpiar campo hidden del certificado
-    const certHidden = document.getElementById('firma_certificado_data');
+    var certHidden = document.getElementById('firma_certificado_data');
     if (certHidden) certHidden.value = '';
 }
 
 function cambiarModo(modo, tabEl) {
     if (certSeleccionado && modo !== 'certificado') {
-        var msg = 'Al cambiar el m\u00e9todo de firma, el certificado digital previamente seleccionado de ' + (certSeleccionado.nombre || 'este titular') + ' se anular\u00e1. Si desea volver a la firma por certificado digital deber\u00e1 seleccionar el certificado.';
-        if (!confirm(msg)) return;
+        if (!confirm(FD_TRANS.changeMethodWarning)) return;
         _anularCertificado();
     }
     if (modo === 'certificado' && !certSeleccionado) {
@@ -535,7 +622,7 @@ function cambiarModo(modo, tabEl) {
 function prepararFirma() {
     const nombreInput = document.getElementById('firma_nombre_input');
     if (!nombreInput || !nombreInput.value.trim()) {
-        alert('Por favor, introduce tu nombre completo.');
+        alert(FD_TRANS.alertEnterName);
         return false;
     }
 
@@ -545,7 +632,7 @@ function prepararFirma() {
         const pixelData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         const hayFirma = Array.from(pixelData).some((v, i) => i % 4 === 3 && v > 0);
         if (!hayFirma) {
-            alert('Por favor, dibuja tu firma en el recuadro.');
+            alert(FD_TRANS.alertDrawSignature);
             return false;
         }
         imagenInput.value = canvas.toDataURL('image/png');
@@ -565,10 +652,9 @@ function prepararFirma() {
     } else if (modoActual === 'certificado') {
         const certData = document.getElementById('firma_certificado_data').value;
         if (!certData) {
-            alert('Por favor, selecciona tu certificado digital antes de firmar.');
+            alert(FD_TRANS.alertSelectCertificate);
             return false;
         }
-        // Generar imagen representativa del certificado
         const nombre = nombreInput.value.trim();
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = 400;
@@ -578,13 +664,13 @@ function prepararFirma() {
         tCtx.fillRect(0, 0, 400, 100);
         tCtx.font = 'bold 14px sans-serif';
         tCtx.fillStyle = '#2c5aa0';
-        tCtx.fillText('✓ Firmado con certificado digital', 15, 30);
+        tCtx.fillText(FD_TRANS.signedWithCertificate, 15, 30);
         tCtx.font = '13px sans-serif';
         tCtx.fillStyle = '#333';
         tCtx.fillText(nombre, 15, 55);
         tCtx.font = '11px sans-serif';
         tCtx.fillStyle = '#666';
-        tCtx.fillText('NIF: ' + (document.getElementById('cert-nif-display').textContent || ''), 15, 78);
+        tCtx.fillText(FD_TRANS.nifDni + ': ' + (document.getElementById('cert-nif-display').textContent || ''), 15, 78);
         imagenInput.value = tempCanvas.toDataURL('image/png');
     }
 
@@ -592,30 +678,44 @@ function prepararFirma() {
 }
 
 // === CERTIFICADO DIGITAL CON AUTOFIRMA ===
-let certSeleccionado = null; // { cert: base64DER, nombre, nif, expiry }
+let certSeleccionado = null;
 
 function iniciarAutofirma() {
     const estadoDiv = document.getElementById('cert-estado');
     const infoDiv   = document.getElementById('cert-info');
 
+    // En móvil: comprobar si AutoFirma puede responder antes de lanzar
+    if (esMobile) {
+        // Intentar lanzar — si falla en 3 segundos, mostrar aviso de descarga
+        var lanzado = false;
+        var timeout = setTimeout(function() {
+            if (!lanzado) {
+                _mostrarErrorCertificado(estadoDiv, infoDiv);
+            }
+        }, 3000);
+
+        // Escuchar si el usuario vuelve a la página (la app se abrió)
+        var onVuelta = function() {
+            lanzado = true;
+            clearTimeout(timeout);
+            document.removeEventListener('visibilitychange', onVuelta);
+        };
+        document.addEventListener('visibilitychange', onVuelta);
+    }
+
     if (typeof AutoScript === 'undefined') {
         estadoDiv.innerHTML =
             '<i class="fas fa-exclamation-triangle fa-2x text-danger mb-2 d-block"></i>' +
-            '<p class="text-danger small mb-2">No se pudo cargar el cliente de firma.</p>' +
+            '<p class="text-danger small mb-2">' + FD_TRANS.couldNotLoadClient + '</p>' +
             '<button type="button" class="btn btn-outline-primary btn-sm" onclick="iniciarAutofirma()">' +
-            '<i class="fas fa-redo mr-1"></i> Reintentar</button>';
+            '<i class="fas fa-redo mr-1"></i> ' + FD_TRANS.retry + '</button>';
         return;
     }
 
     estadoDiv.innerHTML =
         '<i class="fas fa-circle-notch fa-spin fa-2x text-primary mb-2 d-block"></i>' +
-        '<p class="text-muted small mb-0">Iniciando AutoFirma...</p>';
+        '<p class="text-muted small mb-0">' + FD_TRANS.startingAutofirma + '</p>';
 
-    // Verificar primero si el certificado SSL de AutoFirma está aceptado en este navegador.
-    // AutoFirma escucha en wss://127.0.0.1:PUERTO — el navegador rechaza silenciosamente
-    // el WebSocket si el cert autofirmado no ha sido aceptado antes, haciendo que AutoFirma
-    // arranque y se cierre sin poder comunicarse.
-    // La solución es intentar un fetch HTTPS a 127.0.0.1 primero para detectar el problema.
     _verificarCertYLanzar(estadoDiv, infoDiv);
 }
 
@@ -624,17 +724,13 @@ function _verificarCertYLanzar(estadoDiv, infoDiv) {
 }
 
 function _lanzarSelectCertificate(estadoDiv, infoDiv) {
-    console.log('[FirmaDoc] Llamando a AutoScript.selectCertificate...');
     try {
         AutoScript.selectCertificate(
             null,
             function(certB64) {
-                console.log('[FirmaDoc] SUCCESS - certB64 longitud:', certB64 ? certB64.length : 0);
                 procesarCertificadoSeleccionado(certB64, estadoDiv, infoDiv);
             },
             function(type, message) {
-                console.error('[FirmaDoc] ERROR type:', type);
-                console.error('[FirmaDoc] ERROR message:', message);
                 const esCancelado = (type && (type.includes('Cancel') || type.includes('cancel')))
                     || (message && message.toLowerCase().includes('cancel'))
                     || (message && message.toLowerCase().includes('cancelad'));
@@ -648,9 +744,9 @@ function _lanzarSelectCertificate(estadoDiv, infoDiv) {
 
                 if (esCancelado) {
                     estadoDiv.innerHTML =
-                        '<p class="text-muted small mb-2">Selección cancelada.</p>'
+                        '<p class="text-muted small mb-2">' + FD_TRANS.selectionCancelled + '</p>'
                         + '<button type="button" class="btn btn-outline-primary btn-sm" onclick="iniciarAutofirma()">'
-                        + '<i class="fas fa-id-card mr-1"></i> Seleccionar certificado</button>';
+                        + '<i class="fas fa-id-card mr-1"></i> ' + FD_TRANS.selectCertificate + '</button>';
                     infoDiv.style.display = 'none';
 
                 } else if (esConexion) {
@@ -658,81 +754,111 @@ function _lanzarSelectCertificate(estadoDiv, infoDiv) {
 
                 } else {
                     estadoDiv.innerHTML =
-                        '<p class="text-danger small mb-2">Error al conectar con AutoFirma.<br>'
+                        '<p class="text-danger small mb-2">' + FD_TRANS.errorAutofirma + '<br>'
                         + '<small><code>' + (type || '') + '</code><br>' + (message || '') + '</small></p>'
                         + '<button type="button" class="btn btn-outline-primary btn-sm" onclick="iniciarAutofirma()">'
-                        + '<i class="fas fa-redo mr-1"></i> Reintentar</button>';
+                        + '<i class="fas fa-redo mr-1"></i> ' + FD_TRANS.retry + '</button>';
                     infoDiv.style.display = 'none';
                 }
             }
         );
     } catch(e) {
         estadoDiv.innerHTML =
-            '<p class="text-danger small mb-2">Error inesperado: ' + e.message + '</p>'
+            '<p class="text-danger small mb-2">' + FD_TRANS.unexpectedError + ' ' + e.message + '</p>'
             + '<button type="button" class="btn btn-outline-secondary btn-sm" onclick="iniciarAutofirma()">'
-            + '<i class="fas fa-redo mr-1"></i> Reintentar</button>';
+            + '<i class="fas fa-redo mr-1"></i> ' + FD_TRANS.retry + '</button>';
     }
 }
 
-/**
- * El certificado SSL de AutoFirma no está aceptado en este navegador.
- * AutoFirma usa un puerto ALEATORIO en cada sesión, por lo que no es posible
- * que el usuario acepte el certificado navegando a la URL — AutoFirma ya se habría cerrado.
- *
- * La única solución fiable es importar el certificado raíz de AutoFirma en Chrome.
- * AutoFirma lo instala en el sistema durante la instalación en:
- *   Windows: C:\Program Files\AutoFirma\AutoFirma_ROOT.cer
- *   macOS:   /Applications/AutoFirma.app/Contents/Resources/AutoFirma_ROOT.cer
- *   Linux:   /usr/lib/autofirma/AutoFirma_ROOT.cer
- *
- * Chrome usa su propio almacén de certificados en Windows/Linux.
- * En Windows hay que importarlo en el almacén del sistema (que Chrome sí lee).
- */
 function _mostrarErrorCertificado(estadoDiv, infoDiv) {
-    estadoDiv.innerHTML =
-        '<p class="text-danger small mb-2">'
-        + '<strong><i class="fas fa-shield-alt mr-1"></i>Configuración necesaria (una sola vez)</strong><br>'
-        + '<small class="text-muted">El navegador bloquea la comunicación con AutoFirma por su certificado de seguridad.</small>'
-        + '</p>'
-        + '<div class="text-left small mb-3">'
+    var ua = navigator.userAgent;
+    var esAndroid = /Android/i.test(ua);
+    var esIOS = /iPhone|iPad|iPod/i.test(ua);
+    var esMac = /Macintosh|Mac OS/i.test(ua) && !esIOS;
+    var esLinux = /Linux/i.test(ua) && !esAndroid;
+    var esWindows = /Windows/i.test(ua);
+    var esFirefox = /Firefox/i.test(ua);
 
-        // Windows
-        + '<div class="mb-2">'
-        + '<strong><i class="fab fa-windows mr-1"></i>Windows (Chrome/Edge):</strong>'
-        + '<ol style="padding-left:18px;margin:4px 0">'
-        + '<li>Abre <code>C:\\Program Files\\AutoFirma\\</code></li>'
-        + '<li>Doble clic en <code>AutoFirma_ROOT.cer</code></li>'
-        + '<li>Pulsa <strong>Instalar certificado</strong> → <strong>Equipo local</strong> → <strong>Siguiente</strong></li>'
-        + '<li>Elige <strong>Entidades de certificación raíz de confianza</strong> → <strong>Finalizar</strong></li>'
-        + '<li>Reinicia Chrome y vuelve a intentarlo.</li>'
-        + '</ol>'
-        + '</div>'
+    var html = '';
 
-        // Firefox
-        + '<details class="mb-1">'
-        + '<summary><strong><i class="fab fa-firefox mr-1"></i>Firefox</strong> — instrucciones</summary>'
-        + '<ol style="padding-left:18px;margin:4px 0">'
-        + '<li>Menú → <strong>Ajustes</strong> → busca <em>certificados</em></li>'
-        + '<li>Pulsa <strong>Ver certificados</strong> → pestaña <strong>Autoridades</strong></li>'
-        + '<li>Pulsa <strong>Importar</strong> → selecciona <code>AutoFirma_ROOT.cer</code></li>'
-        + '<li>Marca <em>Confiar para identificar sitios web</em> → Aceptar</li>'
-        + '<li>Reinicia Firefox y vuelve a intentarlo.</li>'
-        + '</ol>'
-        + '</details>'
+    if (esAndroid || esIOS) {
+        // ── MÓVIL: la app no está instalada ──
+        html = '<p class="small mb-2" style="color:#0c5460;">'
+            + '<strong><i class="fas fa-mobile-alt mr-1"></i>' + FD_TRANS.certMobileNotInstalled + '</strong>'
+            + '</p>'
+            + '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px;">';
+        if (esAndroid) {
+            html += '<a href="https://play.google.com/store/apps/details?id=es.gob.afirma" target="_blank"'
+                + ' class="btn btn-sm" style="background:#34a853;color:#fff;">'
+                + '<i class="fab fa-google-play mr-1"></i> Google Play</a>';
+        } else {
+            html += '<a href="https://apps.apple.com/es/app/autofirma-app/id627410001" target="_blank"'
+                + ' class="btn btn-sm" style="background:#007aff;color:#fff;">'
+                + '<i class="fab fa-apple mr-1"></i> App Store</a>';
+        }
+        html += '</div>'
+            + '<button type="button" class="btn btn-primary btn-sm" onclick="iniciarAutofirma()">'
+            + '<i class="fas fa-redo mr-1"></i> ' + FD_TRANS.alreadyInstalledRetry + '</button>';
 
-        + '</div>'
-        + '<button type="button" class="btn btn-primary btn-sm" onclick="iniciarAutofirma()">'
-        + '<i class="fas fa-redo mr-1"></i> Ya instalado — Reintentar</button>';
+    } else {
+        // ── ESCRITORIO ──
+        html = '<p class="text-danger small mb-2">'
+            + '<strong><i class="fas fa-shield-alt mr-1"></i>' + FD_TRANS.configNeededTitle + '</strong><br>'
+            + '<small class="text-muted">' + FD_TRANS.configNeededDesc + '</small>'
+            + '</p>'
+            + '<div class="text-left small mb-3">';
 
+        if (esWindows) {
+            html += '<div class="mb-2">'
+                + '<strong><i class="fab fa-windows mr-1"></i>Windows (Chrome/Edge):</strong>'
+                + '<ol style="padding-left:18px;margin:4px 0">'
+                + '<li>' + FD_TRANS.certWin1 + '</li>'
+                + '<li>' + FD_TRANS.certWin2 + '</li>'
+                + '<li>' + FD_TRANS.certWin3 + '</li>'
+                + '<li>' + FD_TRANS.certWin4 + '</li>'
+                + '<li>' + FD_TRANS.certWin5 + '</li>'
+                + '</ol></div>';
+        } else if (esMac) {
+            html += '<div class="mb-2">'
+                + '<strong><i class="fab fa-apple mr-1"></i>macOS:</strong>'
+                + '<ol style="padding-left:18px;margin:4px 0">'
+                + '<li>' + FD_TRANS.certMac1 + '</li>'
+                + '<li>' + FD_TRANS.certMac2 + '</li>'
+                + '<li>' + FD_TRANS.certMac3 + '</li>'
+                + '<li>' + FD_TRANS.certMac4 + '</li>'
+                + '</ol></div>';
+        } else if (esLinux) {
+            html += '<div class="mb-2">'
+                + '<strong><i class="fab fa-linux mr-1"></i>Linux:</strong>'
+                + '<ol style="padding-left:18px;margin:4px 0">'
+                + '<li>' + FD_TRANS.certLinux1 + '</li>'
+                + '<li>' + FD_TRANS.certLinux2 + '</li>'
+                + '</ol></div>';
+        }
+
+        if (esFirefox) {
+            html += '<details class="mb-1">'
+                + '<summary><strong><i class="fab fa-firefox mr-1"></i>Firefox</strong></summary>'
+                + '<ol style="padding-left:18px;margin:4px 0">'
+                + '<li>' + FD_TRANS.certFf1 + '</li>'
+                + '<li>' + FD_TRANS.certFf2 + '</li>'
+                + '<li>' + FD_TRANS.certFf3 + '</li>'
+                + '<li>' + FD_TRANS.certFf4 + '</li>'
+                + '<li>' + FD_TRANS.certFf5 + '</li>'
+                + '</ol></details>';
+        }
+
+        html += '</div>'
+            + '<button type="button" class="btn btn-primary btn-sm" onclick="iniciarAutofirma()">'
+            + '<i class="fas fa-redo mr-1"></i> ' + FD_TRANS.alreadyInstalledRetry + '</button>';
+    }
+
+    estadoDiv.innerHTML = html;
     infoDiv.style.display = 'none';
 }
 
-
-
-
 function procesarCertificadoSeleccionado(certB64, estadoDiv, infoDiv) {
     try {
-        // Decodificar el certificado DER para extraer nombre y NIF
         const certInfo = parsearCertificado(certB64);
 
         certSeleccionado = {
@@ -742,7 +868,6 @@ function procesarCertificadoSeleccionado(certB64, estadoDiv, infoDiv) {
             expiry: certInfo.expiry
         };
 
-        // Rellenar Y bloquear los campos — con certificado no se pueden modificar
         const nombreInput = document.getElementById('firma_nombre_input');
         const nifInput    = document.getElementById('firma_nif_input');
 
@@ -752,7 +877,7 @@ function procesarCertificadoSeleccionado(certB64, estadoDiv, infoDiv) {
             nombreInput.style.backgroundColor = '#e9ecef';
             nombreInput.style.borderColor = '#ced4da';
             nombreInput.style.cursor = 'not-allowed';
-            nombreInput.title = 'Campo bloqueado: dato obtenido del certificado digital acreditado';
+            nombreInput.title = FD_TRANS.certFieldLocked;
         }
         if (nifInput && certInfo.nif) {
             nifInput.value = certInfo.nif;
@@ -760,10 +885,9 @@ function procesarCertificadoSeleccionado(certB64, estadoDiv, infoDiv) {
             nifInput.style.backgroundColor = '#e9ecef';
             nifInput.style.borderColor = '#ced4da';
             nifInput.style.cursor = 'not-allowed';
-            nifInput.title = 'Campo bloqueado: dato obtenido del certificado digital acreditado';
+            nifInput.title = FD_TRANS.certFieldLocked;
         }
 
-        // Guardar el certificado en el campo hidden
         document.getElementById('firma_certificado_data').value = JSON.stringify({
             tipo: 'autofirma',
             cert: certB64,
@@ -772,8 +896,7 @@ function procesarCertificadoSeleccionado(certB64, estadoDiv, infoDiv) {
             expiry: certInfo.expiry
         });
 
-        // Mostrar info
-        document.getElementById('cert-nombre-display').textContent = certInfo.nombre || 'Certificado seleccionado';
+        document.getElementById('cert-nombre-display').textContent = certInfo.nombre || FD_TRANS.certificateSelected;
         document.getElementById('cert-nif-display').textContent    = certInfo.nif   || '—';
         document.getElementById('cert-expiry-display').textContent = certInfo.expiry || '—';
 
@@ -781,13 +904,11 @@ function procesarCertificadoSeleccionado(certB64, estadoDiv, infoDiv) {
         infoDiv.style.display   = 'block';
 
     } catch(e) {
-        console.error('Error procesando certificado:', e);
-        // Aunque falle el parseo, el certificado está seleccionado
         certSeleccionado = { cert: certB64, nombre: '', nif: '', expiry: '' };
         document.getElementById('firma_certificado_data').value = JSON.stringify({
             tipo: 'autofirma', cert: certB64
         });
-        document.getElementById('cert-nombre-display').textContent = 'Certificado seleccionado';
+        document.getElementById('cert-nombre-display').textContent = FD_TRANS.certificateSelected;
         document.getElementById('cert-nif-display').textContent    = '—';
         document.getElementById('cert-expiry-display').textContent = '—';
         estadoDiv.style.display = 'none';
@@ -796,13 +917,11 @@ function procesarCertificadoSeleccionado(certB64, estadoDiv, infoDiv) {
 }
 
 function parsearCertificado(certB64) {
-    // Parser ASN.1 DER completo para extraer Subject y validez del certificado X.509
     try {
         const binary = atob(certB64);
         const buf = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i);
 
-        // --- Leer longitud ASN.1 ---
         function readLen(buf, pos) {
             if (buf[pos] < 0x80) return { len: buf[pos], next: pos + 1 };
             const n = buf[pos] & 0x7F;
@@ -811,14 +930,12 @@ function parsearCertificado(certB64) {
             return { len, next: pos + 1 + n };
         }
 
-        // --- Leer un nodo TLV ---
         function readNode(buf, pos) {
             const tag = buf[pos];
             const { len, next } = readLen(buf, pos + 1);
             return { tag, len, start: next, end: next + len };
         }
 
-        // --- Iterar hijos de una secuencia ---
         function children(buf, start, end) {
             const result = [];
             let pos = start;
@@ -830,7 +947,6 @@ function parsearCertificado(certB64) {
             return result;
         }
 
-        // --- Leer OID ---
         function readOID(buf, start, len) {
             const bytes = buf.slice(start, start + len);
             let oid = Math.floor(bytes[0] / 40) + '.' + (bytes[0] % 40);
@@ -842,70 +958,49 @@ function parsearCertificado(certB64) {
             return oid;
         }
 
-        // --- Leer string (UTF8, Printable, IA5, BMP, T61) ---
         function readStr(buf, tag, start, len) {
             const bytes = buf.slice(start, start + len);
-            if (tag === 0x1E) { // BMPString (UTF-16BE)
+            if (tag === 0x1E) {
                 let s = '';
                 for (let i = 0; i < bytes.length - 1; i += 2)
                     s += String.fromCharCode((bytes[i] << 8) | bytes[i+1]);
                 return s;
             }
-            // UTF8String (0x0C), PrintableString (0x13), IA5String (0x16), T61 (0x14)
             let s = '';
             for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
             return s;
         }
 
-        // --- Leer fecha UTCTime / GeneralizedTime ---
         function readDate(buf, tag, start, len) {
             let s = '';
             for (let i = 0; i < len; i++) s += String.fromCharCode(buf[start + i]);
             try {
-                if (tag === 0x17) { // UTCTime: YYMMDDHHMMSSZ
+                if (tag === 0x17) {
                     const yr = parseInt(s.substr(0,2));
                     const year = yr >= 50 ? 1900+yr : 2000+yr;
                     return year + '-' + s.substr(2,2) + '-' + s.substr(4,2);
-                } else { // GeneralizedTime: YYYYMMDDHHMMSSZ
+                } else {
                     return s.substr(0,4) + '-' + s.substr(4,2) + '-' + s.substr(6,2);
                 }
             } catch(e) { return ''; }
         }
 
-        // OIDs relevantes
-        const OID_CN           = '2.5.4.3';
-        const OID_SERIAL       = '2.5.4.5';
-        const OID_GIVEN        = '2.5.4.42';
-        const OID_SURNAME      = '2.5.4.4';
-        const OID_COMMONNAME   = '2.5.4.3';
+        const OID_CN      = '2.5.4.3';
+        const OID_SERIAL  = '2.5.4.5';
+        const OID_GIVEN   = '2.5.4.42';
+        const OID_SURNAME = '2.5.4.4';
 
-        // OIDs de NIF en certificados españoles (FNMT, ACCV, etc.)
-        const OID_NIF_FNMT   = '1.3.6.1.4.1.5734.1.1';   // FNMT NIF
-        const OID_DNI        = '2.16.724.1.3.5.4.1.1';
-
-        // Extraer Subject: en X.509 DER la estructura es:
-        // SEQUENCE { SEQUENCE(tbsCert) { ... SEQUENCE(validity) ... SEQUENCE(subject) ... } }
-        // tbsCert = primer hijo del certificado raíz
         const root     = readNode(buf, 0);
         const tbsKids  = children(buf, root.start, root.end);
-        const tbs      = tbsKids[0]; // tbsCertificate
+        const tbs      = tbsKids[0];
         const tbsItems = children(buf, tbs.start, tbs.end);
 
-        // Buscar validity y subject en tbsCertificate
-        // Estructura: [version], serialNumber, signature, issuer, validity, subject, ...
         let validity = null, subject = null;
         let idx = 0;
-        // Si hay version (tag 0xA0), saltar
         if (tbsItems[0] && tbsItems[0].tag === 0xA0) idx = 1;
-        // serialNumber  → idx
-        // signature     → idx+1
-        // issuer        → idx+2
-        // validity      → idx+3
-        // subject       → idx+4
         if (tbsItems[idx+3]) validity = tbsItems[idx+3];
         if (tbsItems[idx+4]) subject  = tbsItems[idx+4];
 
-        // Leer fecha de validez (notAfter = segundo hijo de validity)
         let expiry = '';
         if (validity) {
             const valKids = children(buf, validity.start, validity.end);
@@ -914,15 +1009,13 @@ function parsearCertificado(certB64) {
             }
         }
 
-        // Extraer atributos del Subject
         let cn = '', serialNum = '', givenName = '', surname = '';
         const extraOIDs = {};
 
         if (subject) {
-            // Subject = SEQUENCE of SET of SEQUENCE { OID, value }
-            const rdns = children(buf, subject.start, subject.end); // SETs
+            const rdns = children(buf, subject.start, subject.end);
             for (const rdn of rdns) {
-                const attrs = children(buf, rdn.start, rdn.end); // SEQUENCEs
+                const attrs = children(buf, rdn.start, rdn.end);
                 for (const attr of attrs) {
                     const attrKids = children(buf, attr.start, attr.end);
                     if (attrKids.length < 2) continue;
@@ -939,54 +1032,40 @@ function parsearCertificado(certB64) {
             }
         }
 
-        // Extraer NIF del serialNumber del Subject
-        // Formatos comunes: "IDCES-12345678A", "12345678A", "DNI 12345678A"
         let nif = '';
         if (serialNum) {
-            // FNMT formato: IDCES-12345678A o IDCEC-X1234567A (NIE)
             const m1 = serialNum.match(/IDCE[SC]-?([0-9A-Z]{8,9})/i);
             if (m1) nif = m1[1];
             else {
-                // DNI: 8 dígitos + letra mayúscula
-                const m2 = serialNum.match(/(\d{8}[A-Z])/);
+                const m2 = serialNum.match(/(\d{8}[A-Z])/);
                 if (m2) nif = m2[1];
                 else {
-                    // NIE: X/Y/Z + 7 dígitos + letra
-                    const m3 = serialNum.match(/([XYZ]\d{7}[A-Z])/);
+                    const m3 = serialNum.match(/([XYZ]\d{7}[A-Z])/);
                     if (m3) nif = m3[1];
-                    else nif = serialNum; // mostrar el serialNumber tal cual
+                    else nif = serialNum;
                 }
             }
         }
 
-        // Construir nombre preferiblemente de givenName+surname, sino del CN
         let nombre = '';
         if (givenName && surname) {
             nombre = (givenName + ' ' + surname).trim();
         } else if (cn) {
-            // CN de FNMT: "APELLIDO1 APELLIDO2, NOMBRE - 12345678A"
-            // Limpiar el NIF del final si aparece
             nombre = cn.replace(/-\s*[0-9A-Z]{8,9}\s*$/, '').replace(/,\s*/, ' ').trim();
-            // Reordenar "APELLIDOS, NOMBRE" → "NOMBRE APELLIDOS"
             if (cn.includes(',')) {
                 const parts = cn.split(',');
                 if (parts.length === 2) nombre = parts[1].trim() + ' ' + parts[0].trim();
             }
         }
 
-        console.log('[FirmaDoc] Cert parsed - nombre:', nombre, '| nif:', nif, '| expiry:', expiry);
-        console.log('[FirmaDoc] Subject attrs - CN:', cn, '| serial:', serialNum, '| given:', givenName, '| surname:', surname);
-        console.log('[FirmaDoc] Extra OIDs:', extraOIDs);
-
         return { nombre, nif, expiry };
     } catch(e) {
-        console.error('[FirmaDoc] parsearCertificado error:', e);
         return { nombre: '', nif: '', expiry: '' };
     }
 }
 
 window.addEventListener('resize', () => {
-    if (canvas) { limpiarCanvas(); ajustarCanvas(); }
+    if (canvas) { ajustarCanvas(); }
 });
 </script>
 </body>

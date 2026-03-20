@@ -11,8 +11,8 @@
 namespace FacturaScripts\Plugins\FirmaDoc\Model;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
-use FacturaScripts\Core\Model\Base\ModelClass;
-use FacturaScripts\Core\Model\Base\ModelTrait;
+use FacturaScripts\Core\Template\ModelClass;
+use FacturaScripts\Core\Template\ModelTrait;
 
 /**
  * Registro histórico de envíos y reenvíos de solicitudes de firma.

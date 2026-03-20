@@ -5,7 +5,7 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.1
+ * @version   1.11
  * @link      https://creativoz.com
  */
 namespace FacturaScripts\Plugins\FirmaDoc\Controller;
@@ -45,7 +45,7 @@ class FirmaDocPublic extends Controller
     {
         $data = parent::getPageData();
         $data['menu'] = '';
-        $data['title'] = 'Firma de documento';
+        $data['title'] = Tools::lang()->trans('firmadoc-title');
         $data['icon'] = 'fas fa-signature';
         $data['showonmenu'] = false;
         return $data;
@@ -80,7 +80,7 @@ class FirmaDocPublic extends Controller
 
         $token = $this->request->get('token', '');
         if (empty($token)) {
-            $response->setContent('<h1>Token no válido</h1>');
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-invalid-token') . '</h1>');
             return;
         }
 
@@ -96,25 +96,25 @@ class FirmaDocPublic extends Controller
             }
         }
         if (!$firma) {
-            $response->setContent('<h1>Enlace no válido</h1>');
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-invalid-link') . '</h1>');
             return;
         }
 
         $config = FirmaDocConfig::getConfig();
 
         if ($config->descarga_pdf === FirmaDocConfig::DESCARGA_NO) {
-            $response->setContent('<h1>Descarga no permitida</h1>');
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-download-not-allowed') . '</h1>');
             return;
         }
         if ($config->descarga_pdf === FirmaDocConfig::DESCARGA_POSFIRMA
             && $firma->estado !== FirmaDoc::ESTADO_FIRMADO) {
-            $response->setContent('<h1>El documento estará disponible tras la firma</h1>');
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-available-after-signing') . '</h1>');
             return;
         }
 
         $documento = $this->cargarDocumento($firma->tipo_doc, $firma->id_doc);
         if (!$documento) {
-            $response->setContent('<h1>Documento no encontrado</h1>');
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-document-not-found') . '</h1>');
             return;
         }
 
@@ -140,7 +140,7 @@ class FirmaDocPublic extends Controller
         $token = $this->request->get('token', '');
 
         if (empty($token)) {
-            $this->mensaje     = 'Link de firma no válido.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-link-invalid');
             $this->mensajeTipo = 'danger';
             return;
         }
@@ -152,14 +152,14 @@ class FirmaDocPublic extends Controller
             // Buscar en firmadoc_firmante (token de firmante individual)
             $firmante = FirmaDocFirmante::getByToken($token);
             if (!$firmante) {
-                $this->mensaje     = 'Este enlace de firma no existe.';
+                $this->mensaje     = Tools::lang()->trans('firmadoc-link-not-exists');
                 $this->mensajeTipo = 'danger';
                 return;
             }
             // Cargar la firma padre
             $firmaPadre = new FirmaDoc();
             if (!$firmaPadre->loadFromCode($firmante->id_firmadoc)) {
-                $this->mensaje     = 'Este enlace de firma no existe.';
+                $this->mensaje     = Tools::lang()->trans('firmadoc-link-not-exists');
                 $this->mensajeTipo = 'danger';
                 return;
             }
@@ -168,13 +168,13 @@ class FirmaDocPublic extends Controller
 
             // Si el firmante está en estado "esperando", no le toca aún
             if ($firmante->estado === FirmaDocFirmante::ESTADO_ESPERANDO) {
-                $this->mensaje     = 'Todavía no es tu turno para firmar. Recibirás un email cuando sea el momento.';
+                $this->mensaje     = Tools::lang()->trans('firmadoc-not-your-turn');
                 $this->mensajeTipo = 'info';
                 return;
             }
             // Si el firmante ya firmó
             if ($firmante->estado === FirmaDocFirmante::ESTADO_FIRMADO) {
-                $this->mensaje     = 'Ya has firmado este documento. ¡Gracias!';
+                $this->mensaje     = Tools::lang()->trans('firmadoc-already-signed-thanks');
                 $this->mensajeTipo = 'success';
                 $this->calcularLinkDocumento();
                 return;
@@ -182,7 +182,7 @@ class FirmaDocPublic extends Controller
         }
 
         if ($this->firma->estado === FirmaDoc::ESTADO_FIRMADO) {
-            $this->mensaje     = 'Este documento ya ha sido firmado.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-document-already-signed');
             $this->mensajeTipo = 'success';
             $this->calcularLinkDocumento();
             return;
@@ -191,8 +191,8 @@ class FirmaDocPublic extends Controller
         if ($this->firma->estado === FirmaDoc::ESTADO_CANCELADO) {
             $motivo = $this->firma->motivo_rechazo ?? '';
             $this->mensaje = empty($motivo)
-                ? 'Este enlace ha sido cancelado.'
-                : 'Este documento fue rechazado con el siguiente motivo: <em>' . htmlspecialchars($motivo) . '</em>';
+                ? Tools::lang()->trans('firmadoc-link-cancelled')
+                : Tools::lang()->trans('firmadoc-document-rejected-reason') . ' <em>' . htmlspecialchars($motivo) . '</em>';
             $this->mensajeTipo = 'warning';
             return;
         }
@@ -200,7 +200,7 @@ class FirmaDocPublic extends Controller
         if ($this->firma->estaExpirado()) {
             $this->firma->estado = FirmaDoc::ESTADO_EXPIRADO;
             $this->firma->save();
-            $this->mensaje     = 'Este enlace ha caducado. Contacta con la empresa para recibir uno nuevo.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-link-expired');
             $this->mensajeTipo = 'warning';
             return;
         }
@@ -286,7 +286,7 @@ class FirmaDocPublic extends Controller
         $nombre = trim($this->request->request->get('rechazo_nombre', ''));
 
         if (empty($motivo) || empty($nombre)) {
-            $this->mensaje     = 'Por favor indica tu nombre y el motivo del rechazo.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-please-name-and-reason');
             $this->mensajeTipo = 'warning';
             return;
         }
@@ -301,7 +301,7 @@ class FirmaDocPublic extends Controller
         $this->notificarRechazoEmpresa($motivo);
 
         $this->tokenValido = false;
-        $this->mensaje     = 'Has rechazado el documento. Hemos notificado a la empresa.';
+        $this->mensaje     = Tools::lang()->trans('firmadoc-rejected-notified');
         $this->mensajeTipo = 'warning';
     }
 
@@ -321,22 +321,24 @@ class FirmaDocPublic extends Controller
                 $mail->addAddress($this->config->email_adicional);
             }
 
-            $mail->title = 'Documento rechazado: ' . $this->firma->codigo_doc;
-            $mail->addMainBlock(new TitleBlock('Documento rechazado por el cliente', 'h2'));
+            $mail->title = Tools::lang()->trans('firmadoc-email-rejected-subject', ['%code%' => $this->firma->codigo_doc]);
+            $mail->addMainBlock(new TitleBlock(Tools::lang()->trans('firmadoc-email-rejected-title'), 'h2'));
             $mail->addMainBlock(new TextBlock(
-                'El cliente ha rechazado firmar el documento <strong>'
-                . ucfirst($this->firma->tipo_doc) . ' ' . $this->firma->codigo_doc . '</strong>.'
+                Tools::lang()->trans('firmadoc-email-rejected-body', [
+                    '%type%' => ucfirst($this->firma->tipo_doc),
+                    '%code%' => $this->firma->codigo_doc
+                ])
             ));
             $filas = [
-                ['Documento', ucfirst($this->firma->tipo_doc) . ' ' . $this->firma->codigo_doc],
-                ['Motivo',    nl2br(htmlspecialchars($motivo))],
-                ['Fecha',     date('d/m/Y H:i')],
-                ['IP',        $this->firma->ip_cliente ?? '—'],
+                [Tools::lang()->trans('firmadoc-field-document'), ucfirst($this->firma->tipo_doc) . ' ' . $this->firma->codigo_doc],
+                [Tools::lang()->trans('firmadoc-field-reason'),   nl2br(htmlspecialchars($motivo))],
+                [Tools::lang()->trans('firmadoc-field-date'),     date('d/m/Y H:i')],
+                [Tools::lang()->trans('firmadoc-field-ip'),       $this->firma->ip_cliente ?? '—'],
             ];
-            $mail->addMainBlock(new TableBlock(['Campo', 'Detalle'], $filas));
+            $mail->addMainBlock(new TableBlock([Tools::lang()->trans('firmadoc-field-field'), Tools::lang()->trans('firmadoc-field-detail')], $filas));
             $mail->send();
         } catch (\Exception $e) {
-            Tools::log()->error('FirmaDoc: Error notificando rechazo - ' . $e->getMessage());
+            Tools::log()->error(Tools::lang()->trans('firmadoc-error-rejection-notification', ['%error%' => $e->getMessage()]));
         }
     }
 
@@ -349,7 +351,7 @@ class FirmaDocPublic extends Controller
         $aceptoLegal = (bool) $this->request->request->get('acepto_legal', false);
 
         if (empty($firmaImagen) && empty($firmaNombre)) {
-            $this->mensaje     = 'Por favor, introduce tu firma para continuar.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-please-sign');
             $this->mensajeTipo = 'danger';
             return;
         }
@@ -391,9 +393,10 @@ class FirmaDocPublic extends Controller
             // Solo marcar la firma principal como firmada si todos han firmado
             if (!FirmaDocFirmante::todosFirmaron($this->firma->id)) {
                 $this->tokenValido = false;
-                $this->mensaje     = '¡Has firmado correctamente! ('
-                    . $this->firmantesHanFirmado . ' de ' . $this->firmantesTotal
-                    . ' firmantes). El proceso continuará con el siguiente firmante.';
+                $this->mensaje     = Tools::lang()->trans('firmadoc-signed-partial', [
+                    '%signed%' => $this->firmantesHanFirmado,
+                    '%total%' => $this->firmantesTotal
+                ]);
                 $this->mensajeTipo = 'success';
                 $this->calcularLinkDocumento(); // mostrar PDF parcial si está configurado
                 $this->notificarEmpresa();
@@ -406,8 +409,8 @@ class FirmaDocPublic extends Controller
             $this->tokenValido = false;
             $this->firmantesHanFirmado = $this->firmantesTotal ?: 1;
             $this->mensaje     = $this->firmantesTotal > 1
-                ? '¡Documento firmado completamente! (' . $this->firmantesTotal . ' de ' . $this->firmantesTotal . ' firmantes). ¡Gracias a todos!'
-                : '¡Documento firmado correctamente! Gracias.';
+                ? Tools::lang()->trans('firmadoc-signed-complete-multi', ['%total%' => $this->firmantesTotal])
+                : Tools::lang()->trans('firmadoc-signed-complete');
             $this->mensajeTipo = 'success';
             $this->calcularLinkDocumento();
             $this->notificarEmpresa();
@@ -419,10 +422,10 @@ class FirmaDocPublic extends Controller
                     FirmaDocMailer::enviarConfirmacionTodos($this->firma, $docModel);
                 }
             } catch (\Exception $e) {
-                Tools::log()->error('FirmaDoc: Error enviando confirmación - ' . $e->getMessage());
+                Tools::log()->error(Tools::lang()->trans('firmadoc-error-confirmation', ['%error%' => $e->getMessage()]));
             }
         } else {
-            $this->mensaje     = 'Error al guardar la firma. Inténtalo de nuevo.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-save-error');
             $this->mensajeTipo = 'danger';
         }
     }
@@ -467,7 +470,7 @@ class FirmaDocPublic extends Controller
             $mail = new NewMail();
 
             if (!$mail->canSendMail()) {
-                Tools::log()->warning('FirmaDoc: No hay configuración de email para notificar a la empresa.');
+                Tools::log()->warning(Tools::lang()->trans('firmadoc-no-email-config'));
                 return;
             }
 
@@ -480,38 +483,40 @@ class FirmaDocPublic extends Controller
             }
 
             // Asunto
-            $mail->title = 'Documento firmado: ' . $this->firma->codigo_doc;
+            $mail->title = Tools::lang()->trans('firmadoc-email-signed-subject', ['%code%' => $this->firma->codigo_doc]);
 
             // Cuerpo con bloques nativos de FacturaScripts
             $mail->addMainBlock(new TitleBlock(
-                'Nuevo documento firmado',
+                Tools::lang()->trans('firmadoc-email-signed-title'),
                 'h2'
             ));
 
             $mail->addMainBlock(new TextBlock(
-                'El cliente ha firmado el documento ' . ucfirst($this->firma->tipo_doc)
-                . ' <strong>' . $this->firma->codigo_doc . '</strong>.'
+                Tools::lang()->trans('firmadoc-email-signed-body', [
+                    '%type%' => ucfirst($this->firma->tipo_doc),
+                    '%code%' => $this->firma->codigo_doc
+                ])
             ));
 
             // Tabla con los datos de la firma
             $filas = [
-                ['Firmante',   $this->firma->firma_nombre ?? '—'],
-                ['NIF',        $this->firma->firma_nif    ?: '—'],
-                ['Cargo',      $this->firma->firma_cargo  ?: '—'],
-                ['Fecha firma', $this->firma->fecha_firma ?? '—'],
-                ['IP cliente', $this->firma->ip_cliente   ?? '—'],
-                ['Documento',  ucfirst($this->firma->tipo_doc) . ' ' . $this->firma->codigo_doc],
+                [Tools::lang()->trans('firmadoc-field-signer'),    $this->firma->firma_nombre ?? '—'],
+                [Tools::lang()->trans('firmadoc-field-nif'),       $this->firma->firma_nif    ?: '—'],
+                [Tools::lang()->trans('firmadoc-field-position'),  $this->firma->firma_cargo  ?: '—'],
+                [Tools::lang()->trans('firmadoc-field-sign-date'), $this->firma->fecha_firma ?? '—'],
+                [Tools::lang()->trans('firmadoc-field-client-ip'), $this->firma->ip_cliente   ?? '—'],
+                [Tools::lang()->trans('firmadoc-field-document'),  ucfirst($this->firma->tipo_doc) . ' ' . $this->firma->codigo_doc],
             ];
 
             $mail->addMainBlock(new TableBlock(
-                ['Campo', 'Valor'],
+                [Tools::lang()->trans('firmadoc-field-field'), Tools::lang()->trans('firmadoc-field-value')],
                 $filas
             ));
 
             $mail->send();
 
         } catch (\Exception $e) {
-            Tools::log()->error('FirmaDoc: Error al enviar notificación a empresa: ' . $e->getMessage());
+            Tools::log()->error(Tools::lang()->trans('firmadoc-error-notification', ['%error%' => $e->getMessage()]));
         }
     }
 

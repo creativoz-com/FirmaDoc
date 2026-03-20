@@ -12,6 +12,7 @@ namespace FacturaScripts\Plugins\FirmaDoc\Mod;
 
 use FacturaScripts\Core\Contract\SalesModInterface;
 use FacturaScripts\Core\Model\Base\SalesDocument;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
 
 class SalesHeaderHTMLMod implements SalesModInterface
@@ -62,28 +63,28 @@ class SalesHeaderHTMLMod implements SalesModInterface
             // Documento ya firmado — botón verde informativo
             $html  = '<div class="col-sm-auto"><div class="form-group">';
             $html .= '<a href="' . $urlEnviar . '" class="btn btn-success btn-sm" title="Ver firma">';
-            $html .= '<i class="fas fa-check-circle mr-1"></i> Firmado';
+            $html .= '<i class="fas fa-check-circle mr-1"></i> ' . Tools::lang()->trans('firmadoc-btn-signed');
             $html .= '</a>';
             $html .= '</div></div>';
         } elseif ($firmaExistente && $firmaExistente->estado === FirmaDoc::ESTADO_PENDIENTE) {
             // Pendiente de firma — botón naranja
             $html  = '<div class="col-sm-auto"><div class="form-group">';
             $html .= '<a href="' . $urlEnviar . '" class="btn btn-warning btn-sm" title="Pendiente de firma">';
-            $html .= '<i class="fas fa-clock mr-1"></i> Pendiente firma';
+            $html .= '<i class="fas fa-clock mr-1"></i> ' . Tools::lang()->trans('firmadoc-btn-pending');
             $html .= '</a>';
             $html .= '</div></div>';
         } elseif ($firmaExistente && $firmaExistente->estado === FirmaDoc::ESTADO_ANULADO_MOD) {
             // Anulado por modificación — botón rojo de alerta
             $html  = '<div class="col-sm-auto"><div class="form-group">';
             $html .= '<a href="' . $urlEnviar . '" class="btn btn-danger btn-sm" title="Firma anulada por modificación del documento">';
-            $html .= '<i class="fas fa-exclamation-triangle mr-1"></i> Reenviar firma';
+            $html .= '<i class="fas fa-exclamation-triangle mr-1"></i> ' . Tools::lang()->trans('firmadoc-btn-resend');
             $html .= '</a>';
             $html .= '</div></div>';
         } else {
             // Sin firma — botón principal para enviar
             $html  = '<div class="col-sm-auto"><div class="form-group">';
             $html .= '<a href="' . $urlEnviar . '" class="btn btn-primary btn-sm">';
-            $html .= '<i class="fas fa-signature mr-1"></i> Enviar para firma';
+            $html .= '<i class="fas fa-signature mr-1"></i> ' . Tools::lang()->trans('firmadoc-btn-send');
             $html .= '</a>';
             $html .= '</div></div>';
         }

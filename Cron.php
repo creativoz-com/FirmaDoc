@@ -67,7 +67,7 @@ class Cron extends CronClass
         }
 
         if ($count > 0) {
-            Tools::log()->info('FirmaDoc: ' . $count . ' enlace(s) marcados como expirados.');
+            Tools::log()->info(Tools::lang()->trans('firmadoc-cron-expired-count', ['%count%' => $count]));
         }
     }
 
@@ -96,14 +96,12 @@ class Cron extends CronClass
         }
 
         if ($count > 0) {
-            Tools::log()->info('FirmaDoc: ' . $count . ' recordatorio(s) enviados.');
+            Tools::log()->info(Tools::lang()->trans('firmadoc-cron-reminders-count', ['%count%' => $count]));
         }
     }
 
     /**
      * Determina si hay que enviar recordatorio hoy para esta firma.
-     * Lógica: si la expiración está a N días y N coincide con alguno
-     * de los días configurados, y no se ha enviado ya hoy.
      */
     private function debeEnviarRecordatorio(FirmaDoc $firma, array $diasConfig): bool
     {
@@ -123,10 +121,8 @@ class Cron extends CronClass
             return false;
         }
 
-        // Días restantes hasta expiración
         $diasRestantes = (int)$ahora->diff($expiracion)->days;
 
-        // Comprobar si hoy toca (tolerancia ±0: exacto)
         return in_array($diasRestantes, $diasConfig, true);
     }
 
@@ -161,26 +157,27 @@ class Cron extends CronClass
             $asunto = $config->reemplazarVariables($config->email_asunto ?? '', $datos);
             $cuerpo = $config->reemplazarVariables($config->email_cuerpo ?? '', $datos);
 
-            // Prefijo para distinguir recordatorio de envío inicial
-            $asunto = '[Recordatorio] ' . $asunto;
+            $asunto = Tools::lang()->trans('firmadoc-email-reminder-prefix', ['%subject%' => $asunto]);
 
             $mail->addAddress($firma->email_cliente);
             $mail->title = $asunto;
             $mail->addMainBlock(new TextBlock($cuerpo));
             $mail->addMainBlock(new TextBlock(
-                '<p style="margin-top:12px;font-size:0.9em;color:#555;">El enlace caduca en <strong>'
-                . $diasRestantes . ' día(s)</strong> (' . ($firma->fecha_expiracion ?? '') . ').</p>'
+                '<p style="margin-top:12px;font-size:0.9em;color:#555;">'
+                . Tools::lang()->trans('firmadoc-email-expires-in', ['%days%' => $diasRestantes, '%date%' => $firma->fecha_expiracion ?? ''])
+                . '</p>'
                 . '<a href="' . $linkFirma . '" style="background:#28a745;color:#fff;padding:10px 24px;'
                 . 'border-radius:4px;text-decoration:none;display:inline-block;margin-top:8px;font-weight:600;">'
-                . 'Firmar ahora</a>'
+                . Tools::lang()->trans('firmadoc-email-sign-now-btn') . '</a>'
             ));
             return $mail->send();
 
         } catch (\Exception $e) {
-            Tools::log()->error('FirmaDoc Cron: Error en recordatorio - ' . $e->getMessage());
+            Tools::log()->error(Tools::lang()->trans('firmadoc-cron-reminder-error', ['%error%' => $e->getMessage()]));
             return false;
         }
     }
+
     private function procesarRecordatoriosFirmantes(FirmaDocConfig $config): void
     {
         $diasConfig = $config->getDiasRecordatorio();
@@ -188,7 +185,6 @@ class Cron extends CronClass
             return;
         }
 
-        // Buscar firmantes pendientes cuya solicitud padre no haya expirado
         $db = new \FacturaScripts\Core\Base\DataBase();
         $sql = "SELECT ff.* FROM firmadoc_firmante ff
                 INNER JOIN firmadoc f ON f.id = ff.id_firmadoc
@@ -234,7 +230,7 @@ class Cron extends CronClass
         }
 
         if ($count > 0) {
-            Tools::log()->info('FirmaDoc: ' . $count . ' recordatorio(s) enviados a firmantes individuales.');
+            Tools::log()->info(Tools::lang()->trans('firmadoc-cron-signer-reminders-count', ['%count%' => $count]));
         }
     }
 
@@ -269,21 +265,22 @@ class Cron extends CronClass
 
             $asunto = $config->reemplazarVariables($config->email_asunto ?? '', $datos);
             $cuerpo = $config->reemplazarVariables($config->email_cuerpo ?? '', $datos);
-            $asunto = '[Recordatorio] ' . $asunto;
+            $asunto = Tools::lang()->trans('firmadoc-email-reminder-prefix', ['%subject%' => $asunto]);
 
             $mail->addAddress($firmante->email);
             $mail->title = $asunto;
             $mail->addMainBlock(new TextBlock($cuerpo));
             $mail->addMainBlock(new TextBlock(
-                '<p style="margin-top:12px;font-size:0.9em;color:#555;">El enlace caduca en <strong>'
-                . $diasRestantes . ' día(s)</strong>.</p>'
+                '<p style="margin-top:12px;font-size:0.9em;color:#555;">'
+                . Tools::lang()->trans('firmadoc-email-expires-in-short', ['%days%' => $diasRestantes])
+                . '</p>'
                 . '<a href="' . $linkFirma . '" style="background:#28a745;color:#fff;padding:10px 24px;'
                 . 'border-radius:4px;text-decoration:none;display:inline-block;margin-top:8px;font-weight:600;">'
-                . 'Firmar ahora</a>'
+                . Tools::lang()->trans('firmadoc-email-sign-now-btn') . '</a>'
             ));
             return $mail->send();
         } catch (\Exception $e) {
-            Tools::log()->error('FirmaDoc Cron: Error en recordatorio firmante - ' . $e->getMessage());
+            Tools::log()->error(Tools::lang()->trans('firmadoc-cron-signer-reminder-error', ['%error%' => $e->getMessage()]));
             return false;
         }
     }

@@ -11,6 +11,7 @@
 namespace FacturaScripts\Plugins\FirmaDoc\Lib;
 
 use FacturaScripts\Core\Lib\Export\PDFExport;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocFirmante;
 
@@ -42,6 +43,9 @@ class FirmaDocPDFExport extends PDFExport
         }
 
         $total = count($firmados);
+        $t = function(string $key, array $params = []): string {
+            return Tools::lang()->trans($key, $params);
+        };
 
         // Agrupar de 3 en 3
         for ($i = 0; $i < $total; $i += 3) {
@@ -58,10 +62,10 @@ class FirmaDocPDFExport extends PDFExport
             $this->pdf->filledRectangle(0, $pageH - 45, $pageW, 45);
             $this->pdf->setColor(1, 1, 1);
             $this->pdf->addText($marginL, $pageH - 30, 14,
-                'CERTIFICADO DE FIRMA ELECTRONICA', $contentW, 'left');
+                $t('firmadoc-pdf-certificate-title'), $contentW, 'left');
             $subtitle = $total > 1
-                ? 'Firmantes ' . ($i + 1) . '-' . min($i + 2, $total) . ' de ' . $total
-                : 'Este documento certifica la firma realizada sobre el documento adjunto';
+                ? $t('firmadoc-pdf-signers-x-of-y', ['%from%' => $i + 1, '%to%' => min($i + 3, $total), '%total%' => $total])
+                : $t('firmadoc-pdf-certifies-signature');
             $this->pdf->addText($marginL, $pageH - 42, 9, $subtitle, $contentW, 'left');
 
             // Datos del documento
@@ -75,9 +79,9 @@ class FirmaDocPDFExport extends PDFExport
             $this->pdf->line($marginL, $y, $pageW - $marginR, $y);
             $y -= 12;
 
-            // Calcular altura disponible para cada bloque (mitad si hay 2, completo si hay 1)
+            // Calcular altura disponible para cada bloque
             $bloquesEnPagina = min(3, $total - $i);
-            $alturaBloque    = ($pageH - 45 - 100 - 50) / $bloquesEnPagina; // espacio disponible / bloques
+            $alturaBloque    = ($pageH - 45 - 100 - 50) / $bloquesEnPagina;
 
             for ($j = 0; $j < $bloquesEnPagina; $j++) {
                 $firmante = $firmados[$i + $j];
@@ -93,16 +97,17 @@ class FirmaDocPDFExport extends PDFExport
 
                 // Número de firmante
                 $this->pdf->setColor(0.13, 0.45, 0.25);
-                $this->pdf->addText($marginL, $y, 10,
-                    'FIRMANTE ' . ($i + $j + 1) . ($total > 1 ? ' DE ' . $total : ''),
-                    $contentW, 'left');
+                $signerLabel = $total > 1
+                    ? $t('firmadoc-pdf-signer-x-of-y', ['%num%' => $i + $j + 1, '%total%' => $total])
+                    : $t('firmadoc-pdf-signer') . ' ' . ($i + $j + 1);
+                $this->pdf->addText($marginL, $y, 10, $signerLabel, $contentW, 'left');
                 $y -= 14;
 
                 // Datos del firmante
                 $filas = [
-                    ['Nombre completo', $firmante->firma_nombre ?? ($firmante->nombre ?? '—')],
-                    ['NIF / CIF',       $firmante->firma_nif   ?: '—'],
-                    ['Cargo',           $firmante->firma_cargo ?: '—'],
+                    [$t('firmadoc-pdf-full-name'), $firmante->firma_nombre ?? ($firmante->nombre ?? '—')],
+                    [$t('firmadoc-pdf-nif-cif'),   $firmante->firma_nif   ?: '—'],
+                    [$t('firmadoc-pdf-position'),   $firmante->firma_cargo ?: '—'],
                 ];
                 foreach ($filas as [$label, $valor]) {
                     $this->pdf->setColor(0.4, 0.4, 0.4);
@@ -114,12 +119,12 @@ class FirmaDocPDFExport extends PDFExport
 
                 $y -= 4;
                 $this->pdf->setColor(0.13, 0.45, 0.25);
-                $this->pdf->addText($marginL, $y, 10, 'DATOS DE LA FIRMA', $contentW, 'left');
+                $this->pdf->addText($marginL, $y, 10, $t('firmadoc-pdf-signature-data'), $contentW, 'left');
                 $y -= 13;
 
                 $datosFirma = [
-                    ['Fecha y hora',    $firmante->fecha_firma     ?? '—'],
-                    ['IP del firmante', $firmante->ip_cliente      ?? '—'],
+                    [$t('firmadoc-pdf-date-time'),  $firmante->fecha_firma     ?? '—'],
+                    [$t('firmadoc-pdf-signer-ip'),  $firmante->ip_cliente      ?? '—'],
                 ];
                 foreach ($datosFirma as [$label, $valor]) {
                     $this->pdf->setColor(0.4, 0.4, 0.4);
@@ -132,7 +137,7 @@ class FirmaDocPDFExport extends PDFExport
                 // Imagen de firma
                 $y -= 6;
                 $this->pdf->setColor(0.13, 0.45, 0.25);
-                $this->pdf->addText($marginL, $y, 10, 'FIRMA', $contentW, 'left');
+                $this->pdf->addText($marginL, $y, 10, $t('firmadoc-pdf-signature'), $contentW, 'left');
                 $y -= 8;
 
                 $modoFirma   = $firmante->modo_firma ?? '';
@@ -163,12 +168,17 @@ class FirmaDocPDFExport extends PDFExport
                 $this->pdf->filledRectangle($marginL, $y - 24, $contentW, 26);
                 $this->pdf->setColor(0.3, 0.3, 0.3);
                 $this->pdf->addText($marginL + 4, $y - 4, 7,
-                    'El firmante declara haber leido y aceptado el contenido del documento.',
+                    $t('firmadoc-pdf-legal-accepted'),
                     $contentW - 8, 'left');
                 $this->pdf->addText($marginL + 4, $y - 14, 7,
-                    'Firma valida segun Reglamento eIDAS (UE 910/2014). Hash: ' . ($firma->doc_hash ?? ''),
+                    $t('firmadoc-pdf-eidas-valid', ['%hash%' => $firma->doc_hash ?? '']),
                     $contentW - 8, 'left');
                 $y -= 30;
+            }
+
+            // ── QR de verificación (solo en la última página del certificado) ──
+            if ($i + 3 >= $total) {
+                $this->addQrVerificacion($firma, $marginL, $contentW, $pageW, $marginR, $t);
             }
 
             // Pie de página
@@ -176,7 +186,7 @@ class FirmaDocPDFExport extends PDFExport
             $this->pdf->line($marginL, 28, $pageW - $marginR, 28);
             $this->pdf->setColor(0.5, 0.5, 0.5);
             $this->pdf->addText($marginL, 20, 7,
-                'Generado por FirmaDoc · ' . $firma->codigo_doc . ' · ' . date('d/m/Y H:i'),
+                $t('firmadoc-pdf-generated-by') . ' · ' . $firma->codigo_doc . ' · ' . date('d/m/Y H:i'),
                 $contentW, 'left');
         }
 
@@ -208,6 +218,10 @@ class FirmaDocPDFExport extends PDFExport
 
     private function dibujarBloqueCertificado(object $firmante, float $marginL, float $contentW, float $y): void
     {
+        $t = function(string $key, array $params = []): string {
+            return Tools::lang()->trans($key, $params);
+        };
+
         $this->pdf->setColor(0.85, 0.93, 0.87);
         $this->pdf->filledRectangle($marginL, $y - 60, $contentW, 60);
         $this->pdf->setStrokeColor(0.13, 0.45, 0.25);
@@ -215,7 +229,7 @@ class FirmaDocPDFExport extends PDFExport
         $this->pdf->setColor(0.13, 0.45, 0.25);
         $this->pdf->filledRectangle($marginL, $y - 14, $contentW, 14);
         $this->pdf->setColor(1, 1, 1);
-        $this->pdf->addText($marginL + 5, $y - 10, 8, 'CERTIFICADO DIGITAL', $contentW - 10, 'left');
+        $this->pdf->addText($marginL + 5, $y - 10, 8, $t('firmadoc-pdf-digital-cert'), $contentW - 10, 'left');
 
         $certData = [];
         if (!empty($firmante->firma_certificado_data)) {
@@ -227,10 +241,10 @@ class FirmaDocPDFExport extends PDFExport
 
         $yc = $y - 22;
         foreach ([
-            ['Titular', $firmante->firma_nombre ?? '—'],
-            ['NIF',     $firmante->firma_nif    ?? '—'],
-            ['Valido hasta', $certData['expiry'] ?? '—'],
-            ['Fecha firma',  $firmante->fecha_firma ?? '—'],
+            [$t('firmadoc-pdf-holder'),     $firmante->firma_nombre ?? '—'],
+            [$t('firmadoc-field-nif'),       $firmante->firma_nif    ?? '—'],
+            [$t('firmadoc-pdf-valid-until'), $certData['expiry'] ?? '—'],
+            [$t('firmadoc-pdf-sign-date'),   $firmante->fecha_firma ?? '—'],
         ] as [$lbl, $val]) {
             $this->pdf->setColor(0.13, 0.45, 0.25);
             $this->pdf->addText($marginL + 5, $yc, 8, $lbl . ':', 70, 'left');
@@ -256,15 +270,56 @@ class FirmaDocPDFExport extends PDFExport
         return $path;
     }
 
+    /**
+     * Añade un código QR de verificación en la esquina inferior derecha del certificado.
+     */
+    private function addQrVerificacion(FirmaDoc $firma, float $marginL, float $contentW, float $pageW, float $marginR, callable $t): void
+    {
+        try {
+            $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $subdir = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
+            $verifyUrl = $scheme . '://' . $host . $subdir . '/FirmaDocVerify?hash=' . ($firma->doc_hash ?? '');
+
+            $qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
+
+            $context = stream_context_create(['http' => ['timeout' => 5]]);
+            $qrData = @file_get_contents($qrApiUrl, false, $context);
+            if (empty($qrData)) {
+                return;
+            }
+
+            $tmpFile = sys_get_temp_dir() . '/firmadoc_qr_' . uniqid() . '.png';
+            if (file_put_contents($tmpFile, $qrData) === false) {
+                return;
+            }
+
+            // Posición: inferior derecha, encima de la línea del pie de página
+            $qrSize = 55;
+            $qrX = $pageW - $marginR - $qrSize;
+            $qrY = 34;
+
+            $this->pdf->addPngFromFile($tmpFile, $qrX, $qrY, $qrSize, $qrSize);
+            @unlink($tmpFile);
+
+            // Texto debajo del QR
+            $this->pdf->setColor(0.5, 0.5, 0.5);
+            $this->pdf->addText($qrX, $qrY - 8, 6, $t('firmadoc-pdf-verify-qr'), $qrSize, 'center');
+        } catch (\Exception $e) {
+            // Silenciar errores para no romper el PDF
+        }
+    }
+
     private function resumirUserAgent(string $ua): string
     {
         if (empty($ua)) return '—';
+        $unknown = Tools::lang()->trans('firmadoc-pdf-unknown');
         $browser = match (true) {
             str_contains($ua, 'Chrome')  => 'Chrome',
             str_contains($ua, 'Firefox') => 'Firefox',
             str_contains($ua, 'Safari')  => 'Safari',
             str_contains($ua, 'Edge')    => 'Edge',
-            default => 'Desconocido',
+            default => $unknown,
         };
         $os = match (true) {
             str_contains($ua, 'Windows') => 'Windows',
@@ -273,7 +328,7 @@ class FirmaDocPDFExport extends PDFExport
             str_contains($ua, 'iPad')    => 'iPad',
             str_contains($ua, 'Mac')     => 'macOS',
             str_contains($ua, 'Linux')   => 'Linux',
-            default => 'Desconocido',
+            default => $unknown,
         };
         return $browser . ' / ' . $os;
     }

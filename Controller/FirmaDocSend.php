@@ -15,6 +15,7 @@ use FacturaScripts\Core\Base\ControllerPermissions;
 use FacturaScripts\Core\Response;
 use FacturaScripts\Core\Model\User;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
 
 class FirmaDocSend extends Controller
@@ -37,7 +38,7 @@ class FirmaDocSend extends Controller
     {
         $data = parent::getPageData();
         $data['menu'] = 'ventas';
-        $data['title'] = 'Enviar para firma';
+        $data['title'] = Tools::lang()->trans('firmadoc-send-title');
         $data['icon'] = 'fas fa-signature';
         $data['showonmenu'] = false;
         return $data;
@@ -61,7 +62,7 @@ class FirmaDocSend extends Controller
 
         // Si la firma fue anulada por modificación del documento, avisar y resetear
         if ($this->firma->id && $this->firma->estado === FirmaDoc::ESTADO_ANULADO_MOD) {
-            $this->mensaje     = 'La firma anterior fue anulada porque el documento fue modificado. Por favor, genera un nuevo enlace y vuelve a enviarlo al cliente.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-send-signature-voided');
             $this->mensajeTipo = 'warning';
             $this->firma       = new FirmaDoc(); // resetear para mostrar formulario de nuevo envío
         }
@@ -162,10 +163,10 @@ class FirmaDocSend extends Controller
         $this->firma->generarToken();
 
         if ($this->firma->save()) {
-            $this->mensaje     = 'Link generado correctamente. Ya puedes enviarlo al cliente.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-send-link-generated');
             $this->mensajeTipo = 'success';
         } else {
-            $this->mensaje     = 'Error al generar el link. Inténtalo de nuevo.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-send-link-error');
             $this->mensajeTipo = 'danger';
         }
     }
@@ -193,7 +194,7 @@ class FirmaDocSend extends Controller
         if ($this->firma && $this->firma->id) {
             $this->firma->estado = FirmaDoc::ESTADO_CANCELADO;
             $this->firma->save();
-            $this->mensaje     = 'Solicitud de firma cancelada.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-send-cancelled');
             $this->mensajeTipo = 'warning';
         }
     }
@@ -226,7 +227,7 @@ class FirmaDocSend extends Controller
     private function actionEnviarEmail(): void
     {
         if (empty($this->documento)) {
-            $this->mensaje     = 'No se pudo cargar el documento.';
+            $this->mensaje     = Tools::lang()->trans('firmadoc-send-doc-not-loaded');
             $this->mensajeTipo = 'danger';
             $this->setTemplate('FirmaDocSend');
             return;

@@ -5,7 +5,7 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.1
+ * @version   1.11
  * @link      https://creativoz.com
  */
 namespace FacturaScripts\Plugins\FirmaDoc\Lib;
@@ -64,7 +64,7 @@ class FirmaDocMailer
             }
 
         } catch (\Exception $e) {
-            Tools::log()->error('FirmaDoc: Error al enviar emails al generar - ' . $e->getMessage());
+            Tools::log()->error(Tools::lang()->trans('firmadoc-error-sending-emails', ['%error%' => $e->getMessage()]));
         }
 
         return $enviados;
@@ -97,11 +97,11 @@ class FirmaDocMailer
                 $nick
             );
 
-            Tools::log()->notice('FirmaDoc: Email de firma reenviado a ' . $emailDest);
+            Tools::log()->notice(Tools::lang()->trans('firmadoc-email-resent-to', ['%email%' => $emailDest]));
             return true;
 
         } catch (\Exception $e) {
-            Tools::log()->error('FirmaDoc: Error al reenviar email - ' . $e->getMessage());
+            Tools::log()->error(Tools::lang()->trans('firmadoc-error-resending-email', ['%error%' => $e->getMessage()]));
             return false;
         }
     }
@@ -121,21 +121,23 @@ class FirmaDocMailer
             $link    = $baseUrl . '/FirmaDocPublic?token=' . $firmante->token;
 
             $mail->addAddress($firmante->email);
-            $mail->title = 'Solicitud de firma: ' . $firma->codigo_doc;
-            $mail->addMainBlock(new TitleBlock('Es tu turno de firmar', 'h2'));
+            $mail->title = Tools::lang()->trans('firmadoc-email-sign-request', ['%code%' => $firma->codigo_doc]);
+            $mail->addMainBlock(new TitleBlock(Tools::lang()->trans('firmadoc-email-your-turn'), 'h2'));
             $mail->addMainBlock(new TextBlock(
-                'El documento <strong>' . ucfirst($firma->tipo_doc) . ' ' . $firma->codigo_doc
-                . '</strong> está listo para tu firma.'
+                Tools::lang()->trans('firmadoc-email-doc-ready', [
+                    '%type%' => ucfirst($firma->tipo_doc),
+                    '%code%' => $firma->codigo_doc
+                ])
             ));
             if ($firma->fecha_expiracion) {
                 $mail->addMainBlock(new TextBlock(
-                    'El enlace es válido hasta <strong>' . $firma->fecha_expiracion . '</strong>.'
+                    Tools::lang()->trans('firmadoc-email-valid-until', ['%date%' => $firma->fecha_expiracion])
                 ));
             }
             $mail->addMainBlock(new TextBlock(
                 '<a href="' . $link . '" style="background:#007bff;color:#fff;padding:10px 24px;'
                 . 'border-radius:4px;text-decoration:none;display:inline-block;margin-top:12px;font-weight:600;">'
-                . 'Firmar documento</a>'
+                . Tools::lang()->trans('firmadoc-email-sign-now') . '</a>'
             ));
             $mail->send();
 
@@ -148,10 +150,10 @@ class FirmaDocMailer
                 $firmante->nombre
             );
 
-            Tools::log()->info('FirmaDoc: Email enviado al siguiente firmante ' . $firmante->email);
+            Tools::log()->info(Tools::lang()->trans('firmadoc-email-next-signer', ['%email%' => $firmante->email]));
 
         } catch (\Exception $e) {
-            Tools::log()->error('FirmaDoc: Error al notificar siguiente firmante: ' . $e->getMessage());
+            Tools::log()->error(Tools::lang()->trans('firmadoc-error-next-signer', ['%error%' => $e->getMessage()]));
         }
     }
 
@@ -165,21 +167,18 @@ class FirmaDocMailer
             $notif = new \FacturaScripts\Core\Model\EmailNotification();
             $todos = $notif->all([], [], 0, 100);
             foreach ($todos as $n) {
-                // Borrar los creados por FirmaDoc con prefijo propio
                 if (strpos($n->name, 'firmadoc-') === 0) {
                     $n->delete();
                     continue;
                 }
-                // Borrar sendmail-* contaminados (body contiene URLs de FirmaDoc)
                 if (strpos($n->name, 'sendmail-') === 0
                     && (strpos($n->body ?? '', 'FirmaDocPublic') !== false
                         || strpos($n->body ?? '', 'link_firma') !== false)) {
                     $n->delete();
                 }
             }
-        // Verificación completada silenciosamente
         } catch (\Exception $e) {
-            Tools::log()->warning('FirmaDoc: No se pudieron limpiar plantillas: ' . $e->getMessage());
+            Tools::log()->warning(Tools::lang()->trans('firmadoc-could-not-clean-templates', ['%error%' => $e->getMessage()]));
         }
     }
 
@@ -194,11 +193,9 @@ class FirmaDocMailer
             $baseUrl       = self::getBaseUrl();
             $nombreEmpresa = self::getNombreEmpresaPublic();
 
-            // Link al documento (vista pública del PDF firmado)
             $linkDoc = $baseUrl . '/FirmaDocPublic?token=' . $firma->token . '&action=ver_pdf';
 
             $firmantes = FirmaDocFirmante::porSolicitud($firma->id);
-            // Si no hay firmantes en tabla, crear uno ficticio con datos de la firma principal
             if (empty($firmantes)) {
                 $f = new FirmaDocFirmante();
                 $f->nombre = $firma->email_cliente;
@@ -206,15 +203,13 @@ class FirmaDocMailer
                 $firmantes = [$f];
             }
 
-            // Plantillas base (con variables sin reemplazar)
             $tplAsunto = !empty($config->confirm_asunto)
                 ? $config->confirm_asunto
-                : '{{empresa}} Documento firmado';
+                : Tools::lang()->trans('firmadoc-email-default-confirm-subject');
             $tplCuerpo = !empty($config->confirm_cuerpo)
                 ? $config->confirm_cuerpo
                 : $config->getConfirmPorDefecto();
 
-            // Enviar a cada firmante
             foreach ($firmantes as $firmante) {
                 $datosFirmante = [
                     'cliente'          => $firmante->nombre ?: ($mainModel->nombrecliente ?? ''),
@@ -243,7 +238,6 @@ class FirmaDocMailer
                 );
             }
 
-            // Enviar también a la empresa
             $emailEmpresa = Tools::settings('email', 'email', '');
             if (!empty($emailEmpresa)) {
                 $datosEmpresa = [
@@ -262,16 +256,16 @@ class FirmaDocMailer
                 $mailEmpresa = new NewMail();
                 if ($mailEmpresa->canSendMail()) {
                     $mailEmpresa->addAddress($emailEmpresa);
-                    $mailEmpresa->title = '[Copia empresa] ' . $asuntoEmpresa;
+                    $mailEmpresa->title = Tools::lang()->trans('firmadoc-email-company-copy', ['%subject%' => $asuntoEmpresa]);
                     $mailEmpresa->addMainBlock(new TextBlock($cuerpoEmpresa));
                     $mailEmpresa->send();
                 }
             }
 
-            Tools::log()->notice('FirmaDoc: Email de confirmación enviado a todos los firmantes.');
+            Tools::log()->notice(Tools::lang()->trans('firmadoc-email-confirmation-sent'));
 
         } catch (\Exception $e) {
-            Tools::log()->error('FirmaDoc: Error al enviar confirmación - ' . $e->getMessage());
+            Tools::log()->error(Tools::lang()->trans('firmadoc-error-confirmation-all', ['%error%' => $e->getMessage()]));
         }
     }
 
@@ -281,7 +275,7 @@ class FirmaDocMailer
     {
         $mail = new NewMail();
         if (!$mail->canSendMail()) {
-            Tools::log()->warning('FirmaDoc: No hay configuración de email.');
+            Tools::log()->warning(Tools::lang()->trans('firmadoc-no-email-setup'));
             return false;
         }
 
@@ -289,7 +283,7 @@ class FirmaDocMailer
         $cuerpo = $config->reemplazarVariables($config->email_cuerpo ?? '', $datos);
 
         $mail->addAddress($emailDest);
-        $mail->title = $asunto ?: ('Firma pendiente: ' . ($datos['codigo_doc'] ?? ''));
+        $mail->title = $asunto ?: (Tools::lang()->trans('firmadoc-email-pending-sign', ['%code%' => ($datos['codigo_doc'] ?? '')]));
         $mail->addMainBlock(new TextBlock($cuerpo));
         $mail->send();
 

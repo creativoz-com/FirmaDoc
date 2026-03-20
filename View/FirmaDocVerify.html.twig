@@ -1,0 +1,207 @@
+{#
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ *
+ * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
+ * @copyright 2025-2026 Francisco José Matías Olivares
+ * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
+ * @version   1.11
+ * @link      https://creativoz.com
+#}
+<!DOCTYPE html>
+<html lang="{{ constant('FS_LANG') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ trans('firmadoc-verify-title') }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { background: #f5f6fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .firma-card { max-width: 680px; margin: 30px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); overflow: hidden; }
+        .firma-header { background: linear-gradient(135deg, #1a7a4a 0%, #2ecc71 100%); color: #fff; padding: 28px 32px 20px; }
+        .firma-header h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 4px; }
+        .firma-header p { margin: 0; opacity: 0.85; font-size: 0.95rem; }
+        .firma-body { padding: 28px 32px; }
+        .verify-card { border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+        .verify-card-success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .verify-card-warning { background: #fff3cd; border: 1px solid #ffeeba; }
+        .verify-card-danger { background: #f8d7da; border: 1px solid #f5c6cb; }
+        .verify-icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .verify-icon-success { color: #28a745; }
+        .verify-icon-warning { color: #856404; }
+        .verify-icon-danger { color: #721c24; }
+        .verify-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }
+        .verify-title-success { color: #155724; }
+        .verify-title-warning { color: #856404; }
+        .verify-title-danger { color: #721c24; }
+        .verify-desc { font-size: 0.95rem; margin-bottom: 0; }
+        .verify-desc-success { color: #155724; }
+        .verify-desc-warning { color: #856404; }
+        .verify-desc-danger { color: #721c24; }
+        .info-table { width: 100%; margin-bottom: 0; }
+        .info-table td { padding: 8px 12px; border-bottom: 1px solid #e9ecef; font-size: 0.9rem; }
+        .info-table td:first-child { font-weight: 600; color: #555; width: 40%; }
+        .info-table tr:last-child td { border-bottom: none; }
+        .signers-section { background: #f8f9fa; border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+        .signers-section h3 { font-size: 1rem; font-weight: 700; color: #333; margin-bottom: 12px; }
+        .signer-item { background: #fff; border-radius: 6px; padding: 12px 16px; margin-bottom: 8px; border: 1px solid #e9ecef; }
+        .signer-item:last-child { margin-bottom: 0; }
+        .signer-name { font-weight: 600; color: #333; }
+        .signer-detail { font-size: 0.85rem; color: #666; }
+        .hash-display { background: #f8f9fa; border-radius: 6px; padding: 10px 14px; font-family: monospace; font-size: 0.8rem; color: #555; word-break: break-all; margin-top: 12px; border: 1px solid #e9ecef; }
+        .firma-footer { text-align: center; padding: 16px 32px; border-top: 1px solid #e9ecef; color: #999; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+<div class="firma-card">
+
+    {# CABECERA #}
+    <div class="firma-header">
+        <h1><i class="fas fa-shield-alt mr-2"></i> {{ trans('firmadoc-verify-header') }}</h1>
+        <p>{{ trans('firmadoc-verify-subtitle') }}</p>
+    </div>
+
+    <div class="firma-body">
+
+        {# SIN HASH: error #}
+        {% if not fsc.hashValido %}
+        <div class="verify-card verify-card-warning text-center">
+            <div class="verify-icon verify-icon-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="verify-title verify-title-warning">{{ trans('firmadoc-verify-no-hash') }}</div>
+        </div>
+
+        {# HASH PROPORCIONADO PERO NO ENCONTRADO #}
+        {% elseif fsc.firma is null %}
+        <div class="verify-card verify-card-danger text-center">
+            <div class="verify-icon verify-icon-danger">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="verify-title verify-title-danger">{{ trans('firmadoc-verify-not-found') }}</div>
+        </div>
+
+        {# DOCUMENTO FIRMADO Y VERIFICADO #}
+        {% elseif fsc.verificado %}
+        <div class="verify-card verify-card-success text-center">
+            <div class="verify-icon verify-icon-success">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="verify-title verify-title-success">{{ trans('firmadoc-verify-verified') }}</div>
+            <p class="verify-desc verify-desc-success">{{ trans('firmadoc-verify-verified-desc') }}</p>
+        </div>
+
+        {# Datos del documento #}
+        <div style="background:#f8f9fa;border-radius:8px;padding:16px 20px;margin-bottom:16px;">
+            <table class="info-table">
+                <tr>
+                    <td>{{ trans('firmadoc-verify-document') }}</td>
+                    <td>{{ fsc.firma.tipo_doc|capitalize }} {{ fsc.firma.codigo_doc }}</td>
+                </tr>
+                <tr>
+                    <td>{{ trans('firmadoc-verify-status') }}</td>
+                    <td><span class="badge badge-success"><i class="fas fa-check mr-1"></i>{{ trans('firmadoc-verify-verified') }}</span></td>
+                </tr>
+                <tr>
+                    <td>{{ trans('firmadoc-verify-sign-date') }}</td>
+                    <td>{{ fsc.firma.fecha_firma }}</td>
+                </tr>
+            </table>
+        </div>
+
+        {# Firmantes #}
+        {% if fsc.firmantes|length > 0 %}
+        <div class="signers-section">
+            <h3><i class="fas fa-users mr-1"></i> {{ trans('firmadoc-verify-signers') }}</h3>
+            {% for firmante in fsc.firmantes %}
+            {% if firmante.estado == 'firmado' %}
+            <div class="signer-item">
+                <div class="signer-name"><i class="fas fa-user-check text-success mr-1"></i> {{ firmante.firma_nombre ?? firmante.nombre ?? '—' }}</div>
+                {% if firmante.firma_nif %}
+                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-nif') }}:</strong> {{ firmante.firma_nif }}</div>
+                {% endif %}
+                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-date') }}:</strong> {{ firmante.fecha_firma }}</div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% elseif fsc.firma.firma_nombre %}
+        {# Modo firmante unico: datos de la firma principal #}
+        <div class="signers-section">
+            <h3><i class="fas fa-user-check mr-1"></i> {{ trans('firmadoc-verify-signers') }}</h3>
+            <div class="signer-item">
+                <div class="signer-name"><i class="fas fa-user-check text-success mr-1"></i> {{ fsc.firma.firma_nombre }}</div>
+                {% if fsc.firma.firma_nif %}
+                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-nif') }}:</strong> {{ fsc.firma.firma_nif }}</div>
+                {% endif %}
+                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-date') }}:</strong> {{ fsc.firma.fecha_firma }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        {# Hash #}
+        <div class="hash-display">
+            <small class="text-muted"><strong>{{ trans('firmadoc-verify-hash') }}:</strong></small><br>
+            {{ fsc.firma.doc_hash }}
+        </div>
+
+        {# eIDAS #}
+        <div class="text-center mt-3">
+            <small class="text-muted"><i class="fas fa-certificate mr-1"></i> {{ trans('firmadoc-verify-eidas') }}</small>
+        </div>
+
+        {# DOCUMENTO PENDIENTE #}
+        {% elseif fsc.firma.estado == 'pendiente' %}
+        <div class="verify-card verify-card-warning text-center">
+            <div class="verify-icon verify-icon-warning">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="verify-title verify-title-warning">{{ trans('firmadoc-verify-pending') }}</div>
+            <p class="verify-desc verify-desc-warning">{{ trans('firmadoc-verify-pending-desc') }}</p>
+        </div>
+
+        <div style="background:#f8f9fa;border-radius:8px;padding:16px 20px;margin-bottom:16px;">
+            <table class="info-table">
+                <tr>
+                    <td>{{ trans('firmadoc-verify-document') }}</td>
+                    <td>{{ fsc.firma.tipo_doc|capitalize }} {{ fsc.firma.codigo_doc }}</td>
+                </tr>
+                <tr>
+                    <td>{{ trans('firmadoc-verify-status') }}</td>
+                    <td><span class="badge badge-warning">{{ trans('firmadoc-verify-pending') }}</span></td>
+                </tr>
+            </table>
+        </div>
+
+        {# DOCUMENTO ANULADO POR MODIFICACION #}
+        {% elseif fsc.firma.estado == 'anulado_mod' %}
+        <div class="verify-card verify-card-danger text-center">
+            <div class="verify-icon verify-icon-danger">
+                <i class="fas fa-ban"></i>
+            </div>
+            <div class="verify-title verify-title-danger">{{ trans('firmadoc-verify-voided') }}</div>
+            <p class="verify-desc verify-desc-danger">{{ trans('firmadoc-verify-voided-desc') }}</p>
+        </div>
+
+        {# OTROS ESTADOS (expirado, cancelado, etc.) #}
+        {% else %}
+        <div class="verify-card verify-card-danger text-center">
+            <div class="verify-icon verify-icon-danger">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="verify-title verify-title-danger">{{ fsc.mensaje }}</div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    {# PIE #}
+    <div class="firma-footer">
+        <i class="fas fa-shield-alt mr-1"></i> {{ trans('firmadoc-verify-footer') }} &middot; {{ trans('firmadoc-secure-signature') }}
+    </div>
+
+</div>
+
+</body>
+</html>

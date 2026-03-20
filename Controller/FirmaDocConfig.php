@@ -14,6 +14,7 @@ use FacturaScripts\Core\Base\Controller;
 use FacturaScripts\Core\Base\ControllerPermissions;
 use FacturaScripts\Core\Response;
 use FacturaScripts\Core\Model\User;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig as ConfigModel;
 
 class FirmaDocConfig extends Controller
@@ -22,7 +23,7 @@ class FirmaDocConfig extends Controller
     {
         $data = parent::getPageData();
         $data['menu'] = 'admin';
-        $data['title'] = 'Firma Documentos';
+        $data['title'] = Tools::lang()->trans('firmadoc-admin-title');
         $data['icon'] = 'fas fa-signature';
         return $data;
     }

@@ -75,7 +75,7 @@ class FirmaDocHashExtension
             if ($firma->doc_hash !== $hashActual) {
                 $firma->anularPorModificacion();
                 \FacturaScripts\Core\Tools::log()->warning(
-                    'Firma anulada: El documento ' . ($this->codigo ?? $idDoc) . ' fue modificado después de ser firmado.'
+                    \FacturaScripts\Core\Tools::lang()->trans('firmadoc-signature-voided-doc', ['%code%' => $this->codigo ?? $idDoc])
                 );
             }
         };
