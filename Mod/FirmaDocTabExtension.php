@@ -15,6 +15,7 @@ use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocFirmante;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocReenvio;
 
 /**
@@ -26,6 +27,14 @@ class FirmaDocTabExtension
     public function createViews()
     {
         return function () {
+            // Init registra la extensión siempre (no puede consultar la BD en cada
+            // petición del ERP); es aquí donde se decide si este tipo de documento
+            // tiene FirmaDoc activado en la configuración.
+            $tipo = FirmaDoc::getTipoDesdeControlador($this->getPageData()['name'] ?? '');
+            if (!$tipo || !FirmaDocConfig::estaActivo($tipo)) {
+                return;
+            }
+
             $this->addHtmlView(
                 'FirmaDocTab',          // nombre de la vista (id único)
                 'FirmaDocTab',          // archivo Twig: View/FirmaDocTab.html.twig
@@ -75,15 +84,10 @@ class FirmaDocTabExtension
             // Configuración del plugin
             $config = FirmaDocConfig::getConfig();
 
-            // Calcular URL base
-            $scheme  = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-            $host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $subdir  = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
-            $baseUrl = $scheme . '://' . $host . $subdir;
+            $baseUrl = FirmaDocUrl::base();
 
             // Pre-calcular links WhatsApp para firmas pendientes
-            $empresa = new \FacturaScripts\Core\Model\Empresa();
-            $nombreEmpresa = $empresa->loadFromCode(1) ? $empresa->nombre : '';
+            $nombreEmpresa = FirmaDocMailer::getNombreEmpresaPublic($mainModel);
 
             $whatsappLinks = [];
             foreach ($view->cursor as $f) {
@@ -201,12 +205,16 @@ class FirmaDocTabExtension
                 $this->actionFirmadocEmailFirmante($tipo, $mainModel);
             }
 
-            // PRG: redirigir por GET para evitar reenvío del POST con F5
+            // PRG: redirigir por GET para evitar reenvío del POST con F5.
+            // Se usa redirect() del framework y no header()+exit(): con exit() se salta
+            // el cierre de index.php, que es donde se guardan los mensajes del log, así
+            // que el usuario no llegaba a ver el «enlace generado y enviado a...».
             $code = $this->request->request->get('code', '');
             $activetab = $this->request->request->get('activetab', 'FirmaDocTab');
             $controller = $this->getPageData()['name'] ?? '';
-            header('Location: ' . $controller . '?code=' . urlencode($code) . '&activetab=' . urlencode($activetab));
-            exit();
+            // El retardo de 3 s es el mismo que usa AdminPlugins del núcleo: da tiempo
+            // a que se vea el mensaje antes de que el navegador recargue por GET.
+            $this->redirect($controller . '?code=' . urlencode($code) . '&activetab=' . urlencode($activetab), 3);
         };
     }
 
@@ -228,9 +236,9 @@ class FirmaDocTabExtension
     }
 
     /**
-     * Envía el email de solicitud de firma a un firmante.
-     * Usa EmailNotification con nombre propio (firmadoc-*) para NO interferir
-     * con la plantilla nativa de FacturaScripts (sendmail-ModelClassName).
+     * Envía el email de solicitud de firma a un firmante concreto.
+     * Usa la plantilla propia del plugin a través de FirmaDocMailer; no toca
+     * ningún registro EmailNotification del núcleo.
      */
     public function actionFirmadocEmailFirmante()
     {
@@ -331,7 +339,7 @@ class FirmaDocTabExtension
             $firma->generarToken();
 
             if (!$firma->save()) {
-                \FacturaScripts\Core\Tools::log()->error('FirmaDoc: Error al generar el enlace de firma.');
+                \FacturaScripts\Core\Tools::log()->error(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-link-generate-error'));
                 return;
             }
 
@@ -403,94 +411,47 @@ class FirmaDocTabExtension
 
             $option = $this->request->queryOrInput('option', '');
 
-            // ── Interceptar envío de EMAIL nativo ──────────────────────────────
-            // PENDIENTE: inyecta plantilla del plugin con link de firma.
-            // FIRMADO:   email nativo del core + PDF con firmas adjunto.
-            // Otros:     email nativo sin modificar.
+            // ── Envío de EMAIL nativo ──────────────────────────────────────────
+            // Si el documento ya está firmado, se sustituye el PDF adjunto por el
+            // que incluye el certificado de firma. Nada más: la plantilla de correo
+            // del núcleo ('sendmail-*') no se toca, ni para escribirla ni para
+            // borrarla — es global y puede llevar texto del usuario. El enlace de
+            // firma se manda con el botón del plugin, que usa su propia plantilla.
             if ($option === 'MAIL') {
                 $controllerName = $this->getPageData()['name'] ?? '';
                 $tipo = FirmaDoc::getTipoDesdeControlador($controllerName);
                 $mainModel = $this->getModel();
                 if ($tipo && $mainModel && $mainModel->id()) {
-                    $notifName = 'sendmail-' . $mainModel->modelClassName();
-                    $notif = new \FacturaScripts\Core\Model\EmailNotification();
-                    $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('name', $notifName)];
+                    $firmaEmail = FirmaDoc::getActivaPorDocumento($tipo, $mainModel->primaryColumnValue());
 
-                    $todasFirmas = (new FirmaDoc())->all(
-                        [
-                            new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('tipo_doc', $tipo),
-                            new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('id_doc', $mainModel->primaryColumnValue()),
-                        ],
-                        ['fecha_envio' => 'DESC'], 0, 1
-                    );
-                    $ultimaFirma = $todasFirmas[0] ?? null;
+                    if ($firmaEmail && $firmaEmail->estado === FirmaDoc::ESTADO_FIRMADO) {
+                        try {
+                            $tmpDir = FS_FOLDER . '/' . \FacturaScripts\Core\Lib\Email\NewMail::ATTACHMENTS_TMP_PATH;
 
-                    if ($ultimaFirma && $ultimaFirma->estado === FirmaDoc::ESTADO_PENDIENTE) {
-                        // ── PENDIENTE: plantilla del plugin con link de firma ──
-                        $config = FirmaDocConfig::getConfig();
-                        $scheme  = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-                        $host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
-                        $subdir  = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
-                        $baseUrl = rtrim($scheme . '://' . $host . $subdir, '/');
-                        $empresa = new \FacturaScripts\Core\Model\Empresa();
-                        $nombreEmpresa = $empresa->loadFromCode(1) ? $empresa->nombre : '';
+                            // El núcleo nombra el adjunto '<nombre_documento>_mail_<time>_<random>.pdf'.
+                            // Se acota al prefijo de ESTE documento y a los últimos 60 segundos:
+                            // un glob de '*_mail_*.pdf' cogía el fichero más reciente de todo el
+                            // directorio, que en una instalación con varios usuarios enviando a la
+                            // vez puede ser el adjunto de otro.
+                            $prefijo = str_replace([' ', '"', "'", '/', '\\', ','], '_', $mainModel->codigo ?? '');
+                            $archivos = $prefijo === '' ? [] : glob($tmpDir . $prefijo . '_mail_*.pdf');
+                            $archivos = array_filter($archivos, fn($f) => filemtime($f) >= time() - 60);
 
-                        $token = $ultimaFirma->token;
-                        $firmantes = FirmaDocFirmante::porSolicitud($ultimaFirma->id);
-                        foreach ($firmantes as $f) {
-                            if ($f->estado === FirmaDocFirmante::ESTADO_PENDIENTE) {
-                                $token = $f->token;
-                                break;
-                            }
-                        }
-
-                        $datos = [
-                            'cliente'          => $mainModel->nombrecliente ?? '',
-                            'empresa'          => $nombreEmpresa,
-                            'tipo_doc'         => ucfirst($ultimaFirma->tipo_doc),
-                            'codigo_doc'       => $ultimaFirma->codigo_doc ?? '',
-                            'link_firma'       => $baseUrl . '/FirmaDocPublic?token=' . $token,
-                            'fecha_expiracion' => $ultimaFirma->fecha_expiracion ?? '',
-                            'importe'          => ($mainModel->total ?? '') . ' ' . ($mainModel->coddivisa ?? ''),
-                        ];
-                        $asunto = $config->reemplazarVariables($config->email_asunto ?? '', $datos);
-                        $cuerpo = $config->reemplazarVariables($config->email_cuerpo ?? '', $datos);
-
-                        if (!empty($asunto) && !empty($cuerpo)) {
-                            $notif->loadWhere($where);
-                            $notif->name    = $notifName;
-                            $notif->enabled = true;
-                            $notif->subject = $asunto;
-                            $notif->body    = $cuerpo;
-                            $notif->save();
-                        }
-
-                    } else {
-                        // ── FIRMADO u otro: restaurar plantilla original del core ──
-                        if ($notif->loadWhere($where)) {
-                            $notif->delete();
-                        }
-
-                        // ── FIRMADO: reemplazar PDF temporal con el PDF que incluye firmas ──
-                        if ($ultimaFirma && $ultimaFirma->estado === FirmaDoc::ESTADO_FIRMADO) {
-                            // Reemplazar PDF temporal del core con PDF que incluye firmas
-                            try {
-                                $tmpDir = FS_FOLDER . '/' . \FacturaScripts\Core\Lib\Email\NewMail::ATTACHMENTS_TMP_PATH;
-                                $archivos = glob($tmpDir . '*_mail_*.pdf');
-                                if (!empty($archivos)) {
-                                    usort($archivos, fn($a, $b) => filemtime($b) - filemtime($a));
-                                    $pdfExport = new \FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPDFExport();
-                                    $pdfExport->newDoc($mainModel->codigo ?? '', 0, '');
-                                    $pdfExport->addBusinessDocPage($mainModel);
-                                    $pdfExport->addCertificadoFirma($ultimaFirma, $mainModel);
-                                    $pdfBytes = $pdfExport->getDoc();
-                                    if (!empty($pdfBytes)) {
-                                        file_put_contents($archivos[0], $pdfBytes);
-                                    }
+                            if (!empty($archivos)) {
+                                usort($archivos, fn($a, $b) => filemtime($b) - filemtime($a));
+                                $pdfExport = new \FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPDFExport();
+                                $pdfExport->newDoc($mainModel->codigo ?? '', 0, '');
+                                $pdfExport->addBusinessDocPage($mainModel);
+                                $pdfExport->addCertificadoFirma($firmaEmail, $mainModel);
+                                $pdfBytes = $pdfExport->getDoc();
+                                if (!empty($pdfBytes)) {
+                                    file_put_contents(reset($archivos), $pdfBytes);
                                 }
-                            } catch (\Exception $e) {
-                                \FacturaScripts\Core\Tools::log()->error('FirmaDoc: PDF con firmas en email - ' . $e->getMessage());
                             }
+                        } catch (\Exception $e) {
+                            \FacturaScripts\Core\Tools::log()->error(
+                                \FacturaScripts\Core\Tools::lang()->trans('firmadoc-mail-pdf-error', ['%error%' => $e->getMessage()])
+                            );
                         }
                     }
                 }

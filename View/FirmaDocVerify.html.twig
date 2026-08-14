@@ -97,7 +97,7 @@
             <table class="info-table">
                 <tr>
                     <td>{{ trans('firmadoc-verify-document') }}</td>
-                    <td>{{ fsc.firma.tipo_doc|capitalize }} {{ fsc.firma.codigo_doc }}</td>
+                    <td>{{ fsc.firma.getTitulo() }}</td>
                 </tr>
                 <tr>
                     <td>{{ trans('firmadoc-verify-status') }}</td>
@@ -110,33 +110,22 @@
             </table>
         </div>
 
-        {# Firmantes #}
-        {% if fsc.firmantes|length > 0 %}
+        {# Firmantes — datos enmascarados en el controlador: esta pantalla es pública #}
+        {% if fsc.firmantesPublicos|length > 0 %}
         <div class="signers-section">
             <h3><i class="fas fa-users mr-1"></i> {{ trans('firmadoc-verify-signers') }}</h3>
-            {% for firmante in fsc.firmantes %}
-            {% if firmante.estado == 'firmado' %}
+            {% for firmante in fsc.firmantesPublicos %}
             <div class="signer-item">
-                <div class="signer-name"><i class="fas fa-user-check text-success mr-1"></i> {{ firmante.firma_nombre ?? firmante.nombre ?? '—' }}</div>
-                {% if firmante.firma_nif %}
-                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-nif') }}:</strong> {{ firmante.firma_nif }}</div>
+                <div class="signer-name"><i class="fas fa-user-check text-success mr-1"></i> {{ firmante.nombre }}</div>
+                {% if firmante.nif %}
+                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-nif') }}:</strong> {{ firmante.nif }}</div>
                 {% endif %}
-                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-date') }}:</strong> {{ firmante.fecha_firma }}</div>
+                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-date') }}:</strong> {{ firmante.fecha }}</div>
             </div>
-            {% endif %}
             {% endfor %}
-        </div>
-        {% elseif fsc.firma.firma_nombre %}
-        {# Modo firmante unico: datos de la firma principal #}
-        <div class="signers-section">
-            <h3><i class="fas fa-user-check mr-1"></i> {{ trans('firmadoc-verify-signers') }}</h3>
-            <div class="signer-item">
-                <div class="signer-name"><i class="fas fa-user-check text-success mr-1"></i> {{ fsc.firma.firma_nombre }}</div>
-                {% if fsc.firma.firma_nif %}
-                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-nif') }}:</strong> {{ fsc.firma.firma_nif }}</div>
-                {% endif %}
-                <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-date') }}:</strong> {{ fsc.firma.fecha_firma }}</div>
-            </div>
+            <p class="text-muted small mt-2 mb-0">
+                <i class="fas fa-user-shield mr-1"></i> {{ trans('firmadoc-verify-masked-note') }}
+            </p>
         </div>
         {% endif %}
 
@@ -165,7 +154,7 @@
             <table class="info-table">
                 <tr>
                     <td>{{ trans('firmadoc-verify-document') }}</td>
-                    <td>{{ fsc.firma.tipo_doc|capitalize }} {{ fsc.firma.codigo_doc }}</td>
+                    <td>{{ fsc.firma.getTitulo() }}</td>
                 </tr>
                 <tr>
                     <td>{{ trans('firmadoc-verify-status') }}</td>

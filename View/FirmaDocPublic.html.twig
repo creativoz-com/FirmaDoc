@@ -12,7 +12,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ fsc.firma.codigo_doc ?? trans('firmadoc-title') }} — {{ trans('firmadoc-electronic-signature') }}</title>
+    <title>{{ fsc.firma ? fsc.firma.getTitulo() : trans('firmadoc-title') }} — {{ trans('firmadoc-electronic-signature') }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
@@ -21,6 +21,9 @@
         .firma-header { background: linear-gradient(135deg, #1a7a4a 0%, #2ecc71 100%); color: #fff; padding: 28px 32px 20px; }
         .firma-header h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 4px; }
         .firma-header p { margin: 0; opacity: 0.85; font-size: 0.95rem; }
+        .empresa-logo-caja { background: #fff; border-radius: 8px; padding: 8px 12px; display: inline-block; margin-bottom: 12px; }
+        .empresa-logo-caja img { max-height: 46px; max-width: 220px; display: block; }
+        .empresa-nombre { font-size: 0.95rem; font-weight: 600; letter-spacing: .02em; opacity: .92; margin-bottom: 2px; }
         .firma-body { padding: 28px 32px; }
         #canvas-firma { border: 2px dashed #dee2e6; border-radius: 8px; cursor: crosshair; background: #fafafa; touch-action: none; width: 100%; }
         #canvas-firma.activo { border-color: #1a7a4a; background: #fff; }
@@ -35,6 +38,17 @@
         .btn-firmar:hover { opacity: 0.9; color: #fff; }
         .doc-info { background: #f8f9fa; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.9rem; }
         .doc-info strong { color: #333; }
+        .importe-doc { font-size: 1.15rem; font-weight: 700; color: #1a7a4a; margin-top: 2px; }
+        .otp-caja { text-align: center; padding: 26px 20px; border: 1px solid #dee2e6; border-radius: 10px; background: #fbfdfc; }
+        .otp-caja h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 6px; }
+        .otp-input { font-size: 2rem; letter-spacing: .6rem; text-align: center; width: 100%; max-width: 260px; padding: 10px 6px; border: 2px solid #dee2e6; border-radius: 8px; font-family: monospace; }
+        .otp-input:focus { border-color: #1a7a4a; outline: none; }
+        .legal-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1050; padding: 20px; overflow-y: auto; }
+        .legal-modal.abierto { display: flex; align-items: flex-start; justify-content: center; }
+        .legal-modal-caja { background: #fff; border-radius: 10px; max-width: 620px; width: 100%; margin: auto; box-shadow: 0 8px 40px rgba(0,0,0,.3); }
+        .legal-modal-cabecera { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #e9ecef; }
+        .legal-modal-cuerpo { padding: 18px; font-size: .88rem; line-height: 1.6; max-height: 60vh; overflow-y: auto; }
+        .legal-modal-pie { padding: 12px 18px; border-top: 1px solid #e9ecef; font-size: .85rem; }
         .alerta { border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
@@ -46,10 +60,27 @@
 
 <div class="firma-card">
 
-    {# CABECERA #}
+    {# CABECERA — identifica a quien pide la firma. Sin esto el firmante recibe un
+       enlace anónimo que le pide nombre y DNI, y no lo distingue de un phishing. #}
     <div class="firma-header">
+        {% if fsc.empresaLogo %}
+        <div class="empresa-logo-caja">
+            <img src="{{ fsc.empresaLogo }}" alt="{{ fsc.empresaNombre }}">
+        </div>
+        {% endif %}
+        {% if fsc.empresaNombre %}
+        <div class="empresa-nombre">{{ fsc.empresaNombre }}</div>
+        <h1>{{ trans('firmadoc-company-asks-signature') }}</h1>
+        {% else %}
         <h1><i class="fas fa-signature mr-2"></i> {{ trans('firmadoc-electronic-signature') }}</h1>
-        <p>{{ trans('firmadoc-review-and-sign') }}</p>
+        {% endif %}
+        <p>
+            {% if fsc.firma and fsc.firma.estado == 'firmado' %}
+                {{ trans('firmadoc-header-signed') }}
+            {% else %}
+                {{ trans('firmadoc-review-and-sign') }}
+            {% endif %}
+        </p>
     </div>
 
     <div class="firma-body">
@@ -92,7 +123,12 @@
             <div class="row align-items-center">
                 <div class="col-6">
                     <strong>{{ trans('firmadoc-document') }}:</strong><br>
-                    {{ fsc.firma.tipo_doc|capitalize }} {{ fsc.firma.codigo_doc }}
+                    {# getTitulo() ya resuelve ambos casos: título del PDF subido, o
+                       tipo y código del documento de venta #}
+                    {{ fsc.firma.getTitulo() }}
+                    {% if fsc.importeDoc %}
+                    <div class="importe-doc">{{ fsc.importeDoc }}</div>
+                    {% endif %}
                 </div>
                 <div class="col-6">
                     {% if fsc.firma.estado == 'firmado' %}
@@ -142,16 +178,35 @@
                         <i class="fas fa-chevron-down"></i>
                     </span>
                 </div>
+                {# El iframe de PDF no renderiza en iOS Safari ni en varios navegadores
+                   Android: se queda en negro y el firmante no puede leer lo que firma.
+                   En móvil se ofrece directamente el botón de abrir; el visor incrustado
+                   solo se monta en escritorio, y con aviso si el navegador no lo pinta. #}
                 <div id="pdf-viewer" style="display:none;margin-top:6px;border-radius:8px;overflow:hidden;border:1px solid #c8d8f8;">
-                    <iframe src="{{ fsc.linkDocumento }}#toolbar=1&navpanes=0&scrollbar=1"
-                            style="width:100%;height:420px;border:none;display:block;"
-                            title="{{ trans('firmadoc-view-document-before-signing') }}">
-                        <p>{{ trans('firmadoc-browser-no-preview') }}
-                           <a href="{{ fsc.linkDocumento }}" target="_blank">{{ trans('firmadoc-download-pdf-here') }}</a>.
-                        </p>
-                    </iframe>
+                    <div id="pdf-inline"></div>
+                    <div id="pdf-aviso-movil" style="display:none;padding:16px;text-align:center;background:#f8f9ff;">
+                        <i class="fas fa-file-pdf fa-2x mb-2" style="color:#e53935;"></i>
+                        <p class="small text-muted mb-3">{{ trans('firmadoc-mobile-open-pdf-help') }}</p>
+                        <a href="{{ fsc.linkDocumento }}" target="_blank" rel="noopener"
+                           class="btn btn-primary btn-sm">
+                            <i class="fas fa-external-link-alt mr-1"></i> {{ trans('firmadoc-open-document') }}
+                        </a>
+                    </div>
+                    {# Certificado aparte: en documentos subidos el PDF original no se
+                       toca, así que el certificado puede venir en fichero separado #}
+                    {% if fsc.firma.estado == 'firmado' and fsc.firma.esExterno() %}
                     <div style="background:#f8f9ff;padding:8px 12px;text-align:right;border-top:1px solid #e0e8ff;">
-                        <a href="{{ fsc.linkDocumento }}" target="_blank"
+                        <a href="{{ fsc.urlBase }}/FirmaDocPublic?token={{ fsc.firma.token }}&action=ver_certificado"
+                           target="_blank" rel="noopener"
+                           style="font-size:0.82em;color:#2c5aa0;text-decoration:none;">
+                            <i class="fas fa-certificate mr-1"></i> {{ trans('firmadoc-view-certificate') }}
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    {# En móvil el aviso ya lleva su propio botón: este pie sobraría #}
+                    <div id="pdf-pie" style="background:#f8f9ff;padding:8px 12px;text-align:right;border-top:1px solid #e0e8ff;">
+                        <a href="{{ fsc.linkDocumento }}" target="_blank" rel="noopener"
                            style="font-size:0.82em;color:#2c5aa0;text-decoration:none;">
                             <i class="fas fa-external-link-alt mr-1"></i> {{ trans('firmadoc-open-new-tab') }}
                         </a>
@@ -163,12 +218,48 @@
         {% endif %}
 
 
+        {# VERIFICACIÓN EN DOS PASOS — se pide antes de dejar ver el formulario #}
+        {% if fsc.pideOtp %}
+        <div class="otp-caja">
+            <i class="fas fa-shield-alt fa-2x mb-3" style="color:#1a7a4a;"></i>
+            <h2>{{ trans('firmadoc-otp-title') }}</h2>
+            <p class="text-muted small mb-4">
+                {{ trans('firmadoc-otp-sent-to', {'%email%': fsc.otpDestino}) }}
+            </p>
+
+            {% if fsc.otpError %}
+            <div class="alert alert-danger py-2 px-3 small">{{ fsc.otpError }}</div>
+            {% endif %}
+
+            <form method="post" class="mb-2">
+                <input type="hidden" name="action" value="comprobar_otp">
+                <input type="text" name="otp_codigo" class="otp-input"
+                       inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code"
+                       placeholder="······" autofocus required>
+                <button type="submit" class="btn-firmar mt-3">
+                    <i class="fas fa-check mr-2"></i>{{ trans('firmadoc-otp-verify') }}
+                </button>
+            </form>
+
+            <form method="post">
+                <input type="hidden" name="action" value="reenviar_otp">
+                <button type="submit" class="btn btn-link btn-sm text-muted">
+                    <i class="fas fa-redo mr-1"></i>{{ trans('firmadoc-otp-resend') }}
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
         {# FORMULARIO DE FIRMA #}
         {% if fsc.tokenValido %}
         <form method="post" id="formFirma">
             <input type="hidden" name="action" value="firmar">
             <input type="hidden" name="firma_imagen" id="firma_imagen">
             <input type="hidden" name="firma_certificado_data" id="firma_certificado_data">
+            {# El modo empleado se envía al servidor: antes solo se guardaba cuando se
+               firmaba con certificado, y el certificado PDF mostraba «Modo de firma: —». #}
+            <input type="hidden" name="modo_firma" id="modo_firma_input"
+                   value="{% if fsc.config.modo_manuscrita %}manuscrita{% elseif fsc.config.modo_tipografica %}tipografica{% else %}certificado{% endif %}">
 
             {# TABS DE MODO #}
             {% set modos = [] %}
@@ -217,12 +308,13 @@
 
             {# PANEL TIPOGRÁFICA #}
             {% if fsc.config.modo_tipografica %}
+            {# Antes había aquí un segundo campo de nombre: el firmante escribía lo mismo
+               dos veces, una para dibujar la firma y otra para el dato que se guarda.
+               Ahora la vista previa se genera con el «Nombre completo» de abajo. #}
             <div class="panel-modo {% if fsc.config.modo_manuscrita %}d-none{% endif %}" id="panel-tipografica">
-                <p class="text-muted small mb-2">{{ trans('firmadoc-type-full-name') }}</p>
-                <input type="text" class="form-control mb-3" id="nombre-tipografico"
-                    placeholder="{{ trans('firmadoc-your-full-name') }}"
-                    oninput="actualizarFirmaTipografica(this.value)">
-                <div class="firma-tipografica-preview" id="preview-tipografica"></div>
+                <p class="text-muted small mb-2">{{ trans('firmadoc-typographic-help') }}</p>
+                <div class="firma-tipografica-preview" id="preview-tipografica"
+                     data-vacio="{{ trans('firmadoc-your-full-name') }}"></div>
             </div>
             {% endif %}
 
@@ -318,13 +410,40 @@
                             name="acepto_legal" value="1" required>
                         <label class="custom-control-label small" for="acepto_legal">
                             {{ trans('firmadoc-accept-legal') }}
-                            {% if fsc.config.legal_url %}
-                                <a href="{{ fsc.config.legal_url }}" target="_blank">{{ trans('firmadoc-legal-notice') }}</a>
+                            {# El texto legal se guardaba en configuración y no se mostraba
+                               en ninguna parte: el firmante aceptaba algo que no podía leer.
+                               Si lo hay, se abre en un diálogo; si solo hay URL, se enlaza. #}
+                            {% if fsc.config.legal_texto %}
+                                <a href="#" onclick="abrirLegal(event)">{{ trans('firmadoc-legal-notice') }}</a>
+                            {% elseif fsc.config.legal_url %}
+                                <a href="{{ fsc.config.legal_url }}" target="_blank" rel="noopener">{{ trans('firmadoc-legal-notice') }}</a>
                             {% else %}
                                 {{ trans('firmadoc-legal-notice') }}
                             {% endif %}
                             {{ trans('firmadoc-legal-consent') }}
                         </label>
+                    </div>
+                </div>
+                {% endif %}
+
+                {# DIÁLOGO CON EL TEXTO LEGAL #}
+                {% if fsc.config.legal_texto %}
+                <div id="legal-modal" class="legal-modal" onclick="cerrarLegal(event)">
+                    <div class="legal-modal-caja" onclick="event.stopPropagation()">
+                        <div class="legal-modal-cabecera">
+                            <strong>{{ trans('firmadoc-legal-notice') }}</strong>
+                            <button type="button" class="close" onclick="cerrarLegal(event)" aria-label="Cerrar">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="legal-modal-cuerpo">{{ fsc.config.legal_texto|raw }}</div>
+                        {% if fsc.config.legal_url %}
+                        <div class="legal-modal-pie">
+                            <a href="{{ fsc.config.legal_url }}" target="_blank" rel="noopener">
+                                <i class="fas fa-external-link-alt mr-1"></i> {{ trans('firmadoc-legal-full-notice') }}
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -408,7 +527,9 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
+{# Bootstrap 4 JS necesita jQuery, que esta página no carga: el bundle solo servía para
+   lanzar «Bootstrap's JavaScript requires jQuery» en la consola y descargar 80 KB de más.
+   No se usa ni un solo componente suyo — el diálogo del aviso legal es CSS y JS propios. #}
 {% if fsc.config.modo_certificado %}
 <script>
 SupportDialog.enableSupportDialog(false);
@@ -468,10 +589,73 @@ if (esMobile) {
 }
 
 // === VISOR PDF INLINE ===
+// El iframe de PDF se monta solo la primera vez que se abre el visor, y solo en
+// escritorio: en móvil (iOS sobre todo) se queda en negro en lugar de mostrar el
+// documento, así que allí se ofrece el botón de abrirlo en el visor del sistema.
+var pdfMontado = false;
+
+function esMovil() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+        || window.matchMedia('(max-width: 767px)').matches;
+}
+
+function montarPdf() {
+    if (pdfMontado) return;
+    pdfMontado = true;
+
+    var inline = document.getElementById('pdf-inline');
+    var aviso  = document.getElementById('pdf-aviso-movil');
+    if (!inline || !aviso) return;
+
+    if (esMovil()) {
+        aviso.style.display = 'block';
+        var pie = document.getElementById('pdf-pie');
+        if (pie) pie.style.display = 'none';
+        return;
+    }
+
+    var iframe = document.createElement('iframe');
+    iframe.src = {{ fsc.linkDocumento|json_encode|raw }} + '#toolbar=1&navpanes=0&scrollbar=1';
+    iframe.style.cssText = 'width:100%;height:420px;border:none;display:block;';
+    iframe.title = {{ trans('firmadoc-view-document-before-signing')|json_encode|raw }};
+    inline.appendChild(iframe);
+
+    // Si a los 2,5 s el iframe no ha cargado nada, se cae al botón de abrir aparte
+    setTimeout(function () {
+        var vacio = false;
+        try {
+            vacio = !iframe.contentDocument && !iframe.contentWindow;
+        } catch (e) {
+            vacio = false; // cross-origin: el navegador lo está pintando, todo bien
+        }
+        if (vacio) {
+            inline.innerHTML = '';
+            aviso.style.display = 'block';
+        }
+    }, 2500);
+}
+
+function abrirLegal(e) {
+    if (e) e.preventDefault();
+    var m = document.getElementById('legal-modal');
+    if (m) m.classList.add('abierto');
+}
+
+function cerrarLegal(e) {
+    if (e) e.preventDefault();
+    var m = document.getElementById('legal-modal');
+    if (m) m.classList.remove('abierto');
+}
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') cerrarLegal();
+});
+
 function togglePdf() {
     const viewer = document.getElementById('pdf-viewer');
     const icon   = document.getElementById('pdf-toggle-icon');
     const open   = viewer.style.display === 'none';
+    if (open) montarPdf();
     viewer.style.display = open ? 'block' : 'none';
     icon.innerHTML = open
         ? '<i class="fas fa-chevron-up"></i>'
@@ -479,6 +663,14 @@ function togglePdf() {
 }
 
 // === PAD DE FIRMA MANUSCRITA ===
+// El canvas se dibuja a la resolución real del dispositivo (devicePixelRatio) y no
+// a la de CSS. Antes se guardaba a ~574x160 px y en el certificado PDF, donde la
+// firma ocupa 142x42 puntos, se veía pixelada — sobre todo la hecha con el dedo.
+// Se limita a 3x para que el PNG en base64 no se dispare de tamaño.
+// OJO: tiene que declararse antes de la llamada a ajustarCanvas() de más abajo;
+// con const no hay hoisting utilizable y se cae con «before initialization».
+const RATIO_FIRMA = Math.min(window.devicePixelRatio || 1, 3);
+
 const canvas = document.getElementById('canvas-firma');
 let ctx, dibujando = false, modoActual = '{% if fsc.config.modo_manuscrita %}manuscrita{% elseif fsc.config.modo_tipografica %}tipografica{% else %}certificado{% endif %}';
 let firmaBackup = null; // ImageData backup para preservar firma en resize
@@ -498,40 +690,90 @@ if (canvas) {
     canvas.addEventListener('touchstart', e => { e.preventDefault(); iniciarDibujo(e.touches[0]); }, {passive: false});
     canvas.addEventListener('touchmove', e => { e.preventDefault(); dibujar(e.touches[0]); }, {passive: false});
     canvas.addEventListener('touchend', () => dibujando = false);
+
+    // El panel puede pasar de oculto a visible al cambiar de pestaña, y entonces es
+    // cuando el canvas obtiene su ancho real.
+    if (typeof ResizeObserver !== 'undefined') {
+        var observador = new ResizeObserver(function () {
+            var ancho = Math.floor(canvas.getBoundingClientRect().width);
+            if (ancho >= 50 && Math.abs(ancho * RATIO_FIRMA - canvas.width) > RATIO_FIRMA) {
+                ajustarCanvas();
+            }
+        });
+        observador.observe(canvas.parentElement);
+    }
+    window.addEventListener('load', ajustarCanvas);
 }
 
 function ajustarCanvas() {
-    const w = canvas.parentElement.clientWidth - 40;
-    // Guardar firma antes de redimensionar (canvas.width = X borra el contenido)
-    var backupImg = null;
-    var oldW = canvas.width;
-    var oldH = canvas.height;
-    if (oldW > 0 && oldH > 0) {
-        try { backupImg = ctx.getImageData(0, 0, oldW, oldH); } catch(e) {}
+    // El ancho se mide del contenedor. Si el panel todavía no tiene layout —o está
+    // oculto— clientWidth devuelve solo el padding y el ancho útil sale 0 o negativo;
+    // asignar canvas.width = 0 deja el lienzo inservible y luego getImageData revienta,
+    // con lo que la firma se perdía en silencio. En ese caso no se toca nada y se
+    // reintenta cuando el elemento tenga tamaño de verdad.
+    const anchoCss = Math.floor(canvas.getBoundingClientRect().width)
+        || (canvas.parentElement.clientWidth - 40);
+    const altoCss  = 160;
+
+    if (anchoCss < 50) {
+        programarReajuste();
+        return;
     }
-    canvas.width = w;
+
+    // Guardar la firma antes de redimensionar: asignar canvas.width borra el contenido
+    var copia = null;
+    if (canvas.width > 0 && canvas.height > 0) {
+        copia = document.createElement('canvas');
+        copia.width  = canvas.width;
+        copia.height = canvas.height;
+        copia.getContext('2d').drawImage(canvas, 0, 0);
+    }
+
+    canvas.style.width  = anchoCss + 'px';
+    canvas.style.height = altoCss + 'px';
+    canvas.width  = Math.round(anchoCss * RATIO_FIRMA);
+    canvas.height = Math.round(altoCss * RATIO_FIRMA);
+
+    ctx.setTransform(RATIO_FIRMA, 0, 0, RATIO_FIRMA, 0, 0);
     ctx.strokeStyle = '#1a1a2e';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    // Restaurar firma si existía
-    if (backupImg && oldW === w) {
-        ctx.putImageData(backupImg, 0, 0);
-    } else if (backupImg) {
-        // Si cambió el ancho, redibujar escalado via imagen temporal
-        var tempCanvas = document.createElement('canvas');
-        tempCanvas.width = oldW;
-        tempCanvas.height = oldH;
-        tempCanvas.getContext('2d').putImageData(backupImg, 0, 0);
-        ctx.drawImage(tempCanvas, 0, 0, w, canvas.height);
+
+    if (copia) {
+        // Se redibuja en coordenadas CSS: la transformación ya aplica el ratio
+        ctx.drawImage(copia, 0, 0, anchoCss, altoCss);
     }
+}
+
+// Las coordenadas se devuelven en espacio CSS: del escalado se encarga la
+// transformación del contexto, así el trazo tiene el mismo grosor en todos los equipos.
+var reajustePendiente = false;
+
+function programarReajuste() {
+    if (reajustePendiente) return;
+    reajustePendiente = true;
+
+    var intentos = 0;
+    var reintentar = function () {
+        reajustePendiente = false;
+        intentos++;
+        var ancho = Math.floor(canvas.getBoundingClientRect().width);
+        if (ancho >= 50) {
+            ajustarCanvas();
+        } else if (intentos < 20) {
+            reajustePendiente = true;
+            setTimeout(reintentar, 100);
+        }
+    };
+    requestAnimationFrame(reintentar);
 }
 
 function getPosicion(e) {
     const rect = canvas.getBoundingClientRect();
     return {
-        x: (e.clientX - rect.left) * (canvas.width / rect.width),
-        y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
     };
 }
 
@@ -556,12 +798,25 @@ function limpiarCanvas() {
 }
 
 // === FIRMA TIPOGRÁFICA ===
-function actualizarFirmaTipografica(nombre) {
+// La vista previa tipográfica se alimenta del campo «Nombre completo», que es el
+// único sitio donde el firmante escribe su nombre.
+function actualizarFirmaTipografica() {
     const preview = document.getElementById('preview-tipografica');
-    if (preview) preview.textContent = nombre;
-    const input = document.getElementById('firma_nombre_input');
-    if (input && !input.value) input.value = nombre;
+    const input   = document.getElementById('firma_nombre_input');
+    if (!preview || !input) return;
+
+    const nombre = input.value.trim();
+    preview.textContent = nombre || (preview.dataset.vacio || '');
+    preview.style.opacity = nombre ? '1' : '.35';
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('firma_nombre_input');
+    if (input) {
+        input.addEventListener('input', actualizarFirmaTipografica);
+        actualizarFirmaTipografica();
+    }
+});
 
 // === CAMBIO DE MODO ===
 function _desbloquearCamposIdentidad() {
@@ -612,6 +867,8 @@ function cambiarModo(modo, tabEl) {
         _desbloquearCamposIdentidad();
     }
     modoActual = modo;
+    var campoModo = document.getElementById('modo_firma_input');
+    if (campoModo) campoModo.value = modo;
     document.querySelectorAll('.tab-modo').forEach(function(t) { t.classList.remove('activo'); });
     document.querySelectorAll('.panel-modo').forEach(function(p) { p.classList.add('d-none'); });
     if (tabEl) tabEl.classList.add('activo');
@@ -619,7 +876,18 @@ function cambiarModo(modo, tabEl) {
 }
 
 // === PREPARAR FIRMA ANTES DE ENVIAR ===
+// Envoltorio: si algo falla aquí, el formulario NO debe enviarse. Sin esto, una
+// excepción en el manejador dejaba pasar el submit y la firma se guardaba vacía.
 function prepararFirma() {
+    try {
+        return prepararFirmaInterno();
+    } catch (e) {
+        alert(FD_TRANS.unexpectedError + ' ' + e.message);
+        return false;
+    }
+}
+
+function prepararFirmaInterno() {
     const nombreInput = document.getElementById('firma_nombre_input');
     if (!nombreInput || !nombreInput.value.trim()) {
         alert(FD_TRANS.alertEnterName);
@@ -629,52 +897,125 @@ function prepararFirma() {
     const imagenInput = document.getElementById('firma_imagen');
 
     if (modoActual === 'manuscrita' && canvas) {
+        if (canvas.width < 1 || canvas.height < 1) {
+            ajustarCanvas();
+            alert(FD_TRANS.alertDrawSignature);
+            return false;
+        }
         const pixelData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         const hayFirma = Array.from(pixelData).some((v, i) => i % 4 === 3 && v > 0);
         if (!hayFirma) {
             alert(FD_TRANS.alertDrawSignature);
             return false;
         }
-        imagenInput.value = canvas.toDataURL('image/png');
+        imagenInput.value = ajustarAlLimite(canvas);
     } else if (modoActual === 'tipografica') {
-        const nombre = nombreInput.value.trim();
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = 400;
-        tempCanvas.height = 100;
-        const tCtx = tempCanvas.getContext('2d');
-        tCtx.fillStyle = '#fff';
-        tCtx.fillRect(0, 0, 400, 100);
-        tCtx.font = '60px Dancing Script';
-        tCtx.fillStyle = '#1a4a8a';
-        tCtx.textBaseline = 'middle';
-        tCtx.fillText(nombre, 20, 50);
-        imagenInput.value = tempCanvas.toDataURL('image/png');
+        // El lienzo era de 400x100 fijos con fuente de 60 px: un nombre completo con
+        // dos apellidos no cabía y la firma llegaba cortada al certificado PDF.
+        // Ahora la fuente se reduce hasta que el nombre entra, y se genera a 2x.
+        imagenInput.value = generarFirmaTexto(nombreInput.value.trim());
     } else if (modoActual === 'certificado') {
         const certData = document.getElementById('firma_certificado_data').value;
         if (!certData) {
             alert(FD_TRANS.alertSelectCertificate);
             return false;
         }
-        const nombre = nombreInput.value.trim();
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = 400;
-        tempCanvas.height = 100;
-        const tCtx = tempCanvas.getContext('2d');
-        tCtx.fillStyle = '#f0f4ff';
-        tCtx.fillRect(0, 0, 400, 100);
-        tCtx.font = 'bold 14px sans-serif';
-        tCtx.fillStyle = '#2c5aa0';
-        tCtx.fillText(FD_TRANS.signedWithCertificate, 15, 30);
-        tCtx.font = '13px sans-serif';
-        tCtx.fillStyle = '#333';
-        tCtx.fillText(nombre, 15, 55);
-        tCtx.font = '11px sans-serif';
-        tCtx.fillStyle = '#666';
-        tCtx.fillText(FD_TRANS.nifDni + ': ' + (document.getElementById('cert-nif-display').textContent || ''), 15, 78);
-        imagenInput.value = tempCanvas.toDataURL('image/png');
+        imagenInput.value = generarFirmaCertificado(
+            nombreInput.value.trim(),
+            document.getElementById('cert-nif-display').textContent || ''
+        );
     }
 
     return true;
+}
+
+// La columna firma_imagen es de tipo `text`: en MySQL son 65.535 bytes, y en
+// PostgreSQL no existe `mediumtext`, así que cambiar el esquema rompería esas
+// instalaciones. En vez de eso se acota aquí: si la firma en alta resolución se
+// pasa del límite, se reduce a la mitad hasta que entra, con margen de seguridad.
+const LIMITE_FIRMA = 60000;
+
+function ajustarAlLimite(origen) {
+    let datos = origen.toDataURL('image/png');
+    if (datos.length <= LIMITE_FIRMA) {
+        return datos;
+    }
+
+    let ancho = origen.width;
+    let alto  = origen.height;
+
+    for (let i = 0; i < 4 && datos.length > LIMITE_FIRMA; i++) {
+        ancho = Math.round(ancho / 1.5);
+        alto  = Math.round(alto / 1.5);
+
+        const reducido = document.createElement('canvas');
+        reducido.width  = ancho;
+        reducido.height = alto;
+        reducido.getContext('2d').drawImage(origen, 0, 0, ancho, alto);
+        datos = reducido.toDataURL('image/png');
+    }
+
+    return datos;
+}
+
+// Dibuja la firma tipográfica ajustando el tamaño de letra al ancho disponible.
+function generarFirmaTexto(nombre) {
+    const ESCALA = 2;          // el certificado PDF la reduce mucho: conviene generarla al doble
+    const ANCHO  = 560;
+    const ALTO   = 130;
+    const MARGEN = 20;
+
+    const lienzo = document.createElement('canvas');
+    lienzo.width  = ANCHO * ESCALA;
+    lienzo.height = ALTO * ESCALA;
+
+    const c = lienzo.getContext('2d');
+    c.scale(ESCALA, ESCALA);
+    // Fondo transparente a propósito: con relleno blanco sólido el PNG se iba a
+    // 55 KB y la columna solo admite 64 KB. Así ronda los 8 KB.
+
+    // Se baja el cuerpo de letra hasta que el nombre entre entre los márgenes
+    let tam = 64;
+    do {
+        c.font = tam + 'px "Dancing Script", cursive';
+        if (c.measureText(nombre).width <= ANCHO - MARGEN * 2) break;
+        tam -= 2;
+    } while (tam > 20);
+
+    c.fillStyle = '#1a4a8a';
+    c.textBaseline = 'middle';
+    c.fillText(nombre, MARGEN, ALTO / 2);
+
+    return ajustarAlLimite(lienzo);
+}
+
+function generarFirmaCertificado(nombre, nif) {
+    const ESCALA = 2;
+    const ANCHO  = 460;
+    const ALTO   = 110;
+
+    const lienzo = document.createElement('canvas');
+    lienzo.width  = ANCHO * ESCALA;
+    lienzo.height = ALTO * ESCALA;
+
+    const c = lienzo.getContext('2d');
+    c.scale(ESCALA, ESCALA);
+    c.fillStyle = '#f0f4ff';
+    c.fillRect(0, 0, ANCHO, ALTO);
+
+    c.font = 'bold 15px sans-serif';
+    c.fillStyle = '#2c5aa0';
+    c.fillText(FD_TRANS.signedWithCertificate, 15, 32);
+
+    c.font = '14px sans-serif';
+    c.fillStyle = '#333';
+    c.fillText(nombre, 15, 60);
+
+    c.font = '12px sans-serif';
+    c.fillStyle = '#666';
+    c.fillText(FD_TRANS.nifDni + ': ' + nif, 15, 85);
+
+    return ajustarAlLimite(lienzo);
 }
 
 // === CERTIFICADO DIGITAL CON AUTOFIRMA ===

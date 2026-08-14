@@ -107,7 +107,7 @@
     </column>
     <column>
         <name>doc_hash</name>
-        <type>character varying(32)</type>
+        <type>character varying(64)</type>
         <null>YES</null>
     </column>
     <column>
@@ -165,6 +165,58 @@
         <null>NO</null>
         <default>'unico'</default>
     </column>
+    <column>
+        <name>codigo_verificacion</name>
+        <type>character varying(24)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>otp_codigo</name>
+        <type>character varying(255)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>otp_expira</name>
+        <type>timestamp</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>otp_intentos</name>
+        <type>integer</type>
+        <null>NO</null>
+        <default>0</default>
+    </column>
+    <column>
+        <name>otp_verificado</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
+    </column>
+    <column>
+        <name>otp_enviado_a</name>
+        <type>character varying(150)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>sello_tiempo</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>sello_fecha</name>
+        <type>timestamp</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>sello_autoridad</name>
+        <type>character varying(150)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>titulo</name>
+        <type>character varying(200)</type>
+        <null>YES</null>
+    </column>
         <constraint>
         <name>firmadoc_pkey</name>
         <type>PRIMARY KEY (id)</type>
@@ -172,5 +224,9 @@
     <constraint>
         <name>firmadoc_token_unique</name>
         <type>UNIQUE (token)</type>
+    </constraint>
+    <constraint>
+        <name>firmadoc_codverif_unique</name>
+        <type>UNIQUE (codigo_verificacion)</type>
     </constraint>
 </table>

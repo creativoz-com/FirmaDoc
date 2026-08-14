@@ -12,6 +12,7 @@ namespace FacturaScripts\Plugins\FirmaDoc\Lib;
 
 use FacturaScripts\Core\Lib\Export\PDFExport;
 use FacturaScripts\Core\Tools;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocOtp;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocFirmante;
 
@@ -27,11 +28,30 @@ class FirmaDocPDFExport extends PDFExport
     }
 
     /**
+     * Genera el certificado de firma como PDF independiente.
+     *
+     * Se usa con los documentos externos: el PDF que subió el usuario no se puede
+     * modificar desde PHP con la librería que trae FacturaScripts, y además conviene
+     * que el documento firmado conserve su fichero original intacto.
+     */
+    public static function certificadoSuelto(FirmaDoc $firma, object $documento): string
+    {
+        $export = new self();
+        $export->newDoc($firma->getTitulo(), 0, '');
+        // Sin proteger: el certificado suelto se une después al PDF original, y las
+        // herramientas de unión se niegan a trabajar con ficheros cifrados. La
+        // protección de rospdf es de clave de propietario, que cualquier utilidad
+        // quita en un segundo, así que aquí no se pierde nada real.
+        $export->addCertificadoFirma($firma, $documento, false);
+        return $export->getDoc();
+    }
+
+    /**
      * Añade las páginas de certificado.
      * En modo multi-firmante muestra todos los firmantes que han firmado,
      * 2 por página. En modo único, muestra la firma del firmante principal.
      */
-    public function addCertificadoFirma(FirmaDoc $firma, object $documento): void
+    public function addCertificadoFirma(FirmaDoc $firma, object $documento, bool $proteger = true): void
     {
         // Recoger todos los firmantes que han firmado
         $firmantes = FirmaDocFirmante::porSolicitud($firma->id);
@@ -49,7 +69,27 @@ class FirmaDocPDFExport extends PDFExport
 
         // Agrupar de 3 en 3
         for ($i = 0; $i < $total; $i += 3) {
-            $this->pdf->ezNewPage();
+            // Al generar el certificado suelto todavía no hay documento: newPage() lo
+            // crea y deja abierta la primera página. Si ya existe —el caso normal, tras
+            // el documento de venta— se abre una nueva. Sin esta distinción el
+            // certificado suelto salía con una página en blanco delante, o reventaba
+            // por llamar a ezNewPage() sobre un objeto que aún no existía.
+            if ($this->pdf === null) {
+                // La librería de PDF escribe su caché de fuentes en MyFiles/Cache, y esa
+                // carpeta se borra entera al reconstruir los plugins. Si falta o no es
+                // escribible, Cezpdf muere con un «fwrite(): Argument #1 must be of type
+                // resource» que no dice nada; mejor un aviso que explique qué mirar.
+                $rutaCache = FS_FOLDER . '/MyFiles/Cache';
+                Tools::folderCheckOrCreate($rutaCache);
+                if (!is_writable($rutaCache)) {
+                    Tools::log()->error(Tools::lang()->trans('firmadoc-cache-not-writable', [
+                        '%folder%' => 'MyFiles/Cache',
+                    ]));
+                }
+                $this->newPage();
+            } else {
+                $this->pdf->ezNewPage();
+            }
 
             $pageW    = $this->pdf->ez['pageWidth'];
             $marginL  = $this->pdf->ez['leftMargin'];
@@ -71,9 +111,10 @@ class FirmaDocPDFExport extends PDFExport
             // Datos del documento
             $y = $pageH - 70;
             $this->pdf->setColor(0, 0, 0);
-            $this->pdf->addText($marginL, $y, 11,
-                strtoupper(ucfirst($firma->tipo_doc)) . ': ' . $firma->codigo_doc,
-                $contentW, 'left');
+            $encabezado = $firma->esExterno()
+                ? $firma->getTitulo()
+                : strtoupper(ucfirst($firma->tipo_doc)) . ': ' . $firma->codigo_doc;
+            $this->pdf->addText($marginL, $y, 11, $encabezado, $contentW, 'left');
             $y -= 14;
             $this->pdf->setStrokeColor(0.13, 0.45, 0.25);
             $this->pdf->line($marginL, $y, $pageW - $marginR, $y);
@@ -111,9 +152,9 @@ class FirmaDocPDFExport extends PDFExport
                 ];
                 foreach ($filas as [$label, $valor]) {
                     $this->pdf->setColor(0.4, 0.4, 0.4);
-                    $this->pdf->addText($marginL, $y, 9, $label . ':', 80, 'left');
+                    $this->pdf->addText($marginL, $y, 9, $label . ':', 105, 'left');
                     $this->pdf->setColor(0, 0, 0);
-                    $this->pdf->addText($marginL + 85, $y, 9, $valor, $contentW - 85, 'left');
+                    $this->pdf->addText($marginL + 110, $y, 9, $valor, $contentW - 110, 'left');
                     $y -= 12;
                 }
 
@@ -122,16 +163,38 @@ class FirmaDocPDFExport extends PDFExport
                 $this->pdf->addText($marginL, $y, 10, $t('firmadoc-pdf-signature-data'), $contentW, 'left');
                 $y -= 13;
 
+                $modoFirma   = $firmante->modo_firma ?? '';
+                $firmaImagen = $firmante->firma_imagen ?? '';
+
                 $datosFirma = [
                     [$t('firmadoc-pdf-date-time'),  $firmante->fecha_firma     ?? '—'],
                     [$t('firmadoc-pdf-signer-ip'),  $firmante->ip_cliente      ?? '—'],
+                    [$t('firmadoc-pdf-mode'),       $this->nombreModo($modoFirma, $t)],
                 ];
                 foreach ($datosFirma as [$label, $valor]) {
                     $this->pdf->setColor(0.4, 0.4, 0.4);
-                    $this->pdf->addText($marginL, $y, 9, $label . ':', 80, 'left');
+                    $this->pdf->addText($marginL, $y, 9, $label . ':', 105, 'left');
                     $this->pdf->setColor(0, 0, 0);
-                    $this->pdf->addText($marginL + 85, $y, 9, $valor, $contentW - 85, 'left');
+                    $this->pdf->addText($marginL + 110, $y, 9, $valor, $contentW - 110, 'left');
                     $y -= 12;
+                }
+
+                // ── Trazabilidad ────────────────────────────────────────────────
+                // Estos datos se venían guardando y no se enseñaban en ninguna parte,
+                // que es justo donde tienen valor probatorio.
+                $trazas = $this->filasTrazabilidad($firmante, $firma, $t);
+                if (!empty($trazas)) {
+                    $y -= 4;
+                    $this->pdf->setColor(0.13, 0.45, 0.25);
+                    $this->pdf->addText($marginL, $y, 10, $t('firmadoc-pdf-traceability'), $contentW, 'left');
+                    $y -= 13;
+                    foreach ($trazas as [$label, $valor]) {
+                        $this->pdf->setColor(0.4, 0.4, 0.4);
+                        $this->pdf->addText($marginL, $y, 9, $label . ':', 105, 'left');
+                        $this->pdf->setColor(0, 0, 0);
+                        $this->pdf->addText($marginL + 110, $y, 9, $valor, $contentW - 110, 'left');
+                        $y -= 12;
+                    }
                 }
 
                 // Imagen de firma
@@ -140,26 +203,50 @@ class FirmaDocPDFExport extends PDFExport
                 $this->pdf->addText($marginL, $y, 10, $t('firmadoc-pdf-signature'), $contentW, 'left');
                 $y -= 8;
 
-                $modoFirma   = $firmante->modo_firma ?? '';
-                $firmaImagen = $firmante->firma_imagen ?? '';
-                $certData    = $firmante->firma_certificado_data ?? '';
-
                 if ($modoFirma === 'certificado') {
                     $this->dibujarBloqueCertificado($firmante, $marginL, $contentW, $y);
-                    $y -= 70;
+                    $y -= 82;
                 } elseif (!empty($firmaImagen)) {
+                    // Con un solo firmante hay sitio de sobra: la firma se dibuja al doble
+                    // de tamaño en vez de dejar dos tercios de página en blanco.
+                    $anchoFirma = $total === 1 ? 300 : 150;
+                    $altoFirma  = $total === 1 ? 100 : 50;
                     $imgPath = $this->guardarImagenTemporal($firmaImagen);
                     if ($imgPath) {
                         $this->pdf->setColor(0.95, 0.95, 0.95);
-                        $this->pdf->filledRectangle($marginL, $y - 50, 150, 50);
+                        $this->pdf->filledRectangle($marginL, $y - $altoFirma, $anchoFirma, $altoFirma);
                         $this->pdf->setStrokeColor(0.8, 0.8, 0.8);
-                        $this->pdf->rectangle($marginL, $y - 50, 150, 50);
-                        $this->pdf->addPngFromFile($imgPath, $marginL + 4, $y - 46, 142, 42);
+                        $this->pdf->rectangle($marginL, $y - $altoFirma, $anchoFirma, $altoFirma);
+                        $this->pdf->addPngFromFile(
+                            $imgPath,
+                            $marginL + 4,
+                            $y - $altoFirma + 4,
+                            $anchoFirma - 8,
+                            $altoFirma - 8
+                        );
                         @unlink($imgPath);
                     }
-                    $y -= 58;
+                    $y -= $altoFirma + 8;
                 } else {
                     $y -= 10;
+                }
+
+                // ── Sello de tiempo ─────────────────────────────────────────────
+                if (!empty($firma->sello_fecha)) {
+                    $y -= 8;
+                    $this->pdf->setColor(0.13, 0.45, 0.25);
+                    $this->pdf->addText($marginL, $y, 10, $t('firmadoc-pdf-timestamp'), $contentW, 'left');
+                    $y -= 13;
+                    foreach ([
+                        [$t('firmadoc-pdf-timestamp-date'), $firma->sello_fecha],
+                        [$t('firmadoc-pdf-timestamp-authority'), $firma->sello_autoridad ?? '—'],
+                    ] as [$label, $valor]) {
+                        $this->pdf->setColor(0.4, 0.4, 0.4);
+                        $this->pdf->addText($marginL, $y, 9, $label . ':', 105, 'left');
+                        $this->pdf->setColor(0, 0, 0);
+                        $this->pdf->addText($marginL + 110, $y, 9, $valor, $contentW - 110, 'left');
+                        $y -= 12;
+                    }
                 }
 
                 // Texto legal compacto
@@ -174,6 +261,16 @@ class FirmaDocPDFExport extends PDFExport
                     $t('firmadoc-pdf-eidas-valid', ['%hash%' => $firma->doc_hash ?? '']),
                     $contentW - 8, 'left');
                 $y -= 30;
+
+                // Código de verificación: es lo que se teclea en el portal público,
+                // y a diferencia de la huella se puede leer y copiar sin equivocarse.
+                if (!empty($firma->codigo_verificacion)) {
+                    $this->pdf->setColor(0.13, 0.45, 0.25);
+                    $this->pdf->addText($marginL, $y, 9,
+                        $t('firmadoc-pdf-verification-code') . ': ' . $firma->codigo_verificacion,
+                        $contentW, 'left');
+                    $y -= 16;
+                }
             }
 
             // ── QR de verificación (solo en la última página del certificado) ──
@@ -181,18 +278,25 @@ class FirmaDocPDFExport extends PDFExport
                 $this->addQrVerificacion($firma, $marginL, $contentW, $pageW, $marginR, $t);
             }
 
-            // Pie de página
+            // Pie de página — incluye la empresa emisora: el certificado identificaba
+            // al firmante pero no decía de quién era el documento.
             $this->pdf->setStrokeColor(0.7, 0.7, 0.7);
             $this->pdf->line($marginL, 28, $pageW - $marginR, 28);
             $this->pdf->setColor(0.5, 0.5, 0.5);
-            $this->pdf->addText($marginL, 20, 7,
-                $t('firmadoc-pdf-generated-by') . ' · ' . $firma->codigo_doc . ' · ' . date('d/m/Y H:i'),
-                $contentW, 'left');
+            $pie = $t('firmadoc-pdf-generated-by') . ' · ' . $firma->getTitulo() . ' · ' . date('d/m/Y H:i');
+            // En documentos externos el AttachedFile no lleva empresa: se usa la de la instalación
+            $emisor = FirmaDocEmpresa::nombre($firma->esExterno() ? null : $documento);
+            if (!empty($emisor)) {
+                $pie = $emisor . ' · ' . $pie;
+            }
+            $this->pdf->addText($marginL, 20, 7, $pie, $contentW, 'left');
         }
 
         // Protección PDF
-        $ownerPass = 'FirmaDoc_' . substr(md5($firma->doc_hash ?? uniqid()), 0, 16);
-        $this->pdf->setEncryption('', $ownerPass, ['print' => true, 'modify' => false, 'copy' => false], 2);
+        if ($proteger) {
+            $ownerPass = 'FirmaDoc_' . substr(md5($firma->doc_hash ?? uniqid()), 0, 16);
+            $this->pdf->setEncryption('', $ownerPass, ['print' => true, 'modify' => false, 'copy' => false], 2);
+        }
     }
 
     // ── Helpers privados ──────────────────────────────────────────────────────
@@ -223,9 +327,9 @@ class FirmaDocPDFExport extends PDFExport
         };
 
         $this->pdf->setColor(0.85, 0.93, 0.87);
-        $this->pdf->filledRectangle($marginL, $y - 60, $contentW, 60);
+        $this->pdf->filledRectangle($marginL, $y - 72, $contentW, 72);
         $this->pdf->setStrokeColor(0.13, 0.45, 0.25);
-        $this->pdf->rectangle($marginL, $y - 60, $contentW, 60);
+        $this->pdf->rectangle($marginL, $y - 72, $contentW, 72);
         $this->pdf->setColor(0.13, 0.45, 0.25);
         $this->pdf->filledRectangle($marginL, $y - 14, $contentW, 14);
         $this->pdf->setColor(1, 1, 1);
@@ -252,6 +356,10 @@ class FirmaDocPDFExport extends PDFExport
             $this->pdf->addText($marginL + 75, $yc, 8, $val, $contentW - 80, 'left');
             $yc -= 10;
         }
+
+        // Aclaración: el certificado identifica al firmante, no firma criptográficamente
+        $this->pdf->setColor(0.35, 0.35, 0.35);
+        $this->pdf->addText($marginL + 5, $yc - 2, 6, $t('firmadoc-pdf-cert-note'), $contentW - 10, 'left');
     }
 
     private function guardarImagenTemporal(string $dataUrl): ?string
@@ -276,15 +384,29 @@ class FirmaDocPDFExport extends PDFExport
     private function addQrVerificacion(FirmaDoc $firma, float $marginL, float $contentW, float $pageW, float $marginR, callable $t): void
     {
         try {
-            $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $subdir = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
-            $verifyUrl = $scheme . '://' . $host . $subdir . '/FirmaDocVerify?hash=' . ($firma->doc_hash ?? '');
+            // El QR lleva el código de verificación, no la huella: identifica la firma
+            // de forma unívoca y no revela la huella del contenido del documento.
+            $verifyUrl = FirmaDocUrl::verificacion($firma->codigo_verificacion ?? '');
+            if (empty($verifyUrl)) {
+                // Sin URL de sitio configurada el QR llevaría a ninguna parte
+                return;
+            }
 
-            $qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
+            // El QR se genera en local con la librería que ya trae FacturaScripts
+            // (chillerlan/php-qrcode, la misma que usa el núcleo para el 2FA).
+            // Nunca se envía el documento ni su hash a un servicio externo.
+            if (!class_exists('\chillerlan\QRCode\QRCode')) {
+                return;
+            }
 
-            $context = stream_context_create(['http' => ['timeout' => 5]]);
-            $qrData = @file_get_contents($qrApiUrl, false, $context);
+            $options = new \chillerlan\QRCode\QROptions([
+                'version'    => \chillerlan\QRCode\QRCode::VERSION_AUTO,
+                'outputType' => \chillerlan\QRCode\QRCode::OUTPUT_IMAGE_PNG,
+                'eccLevel'   => \chillerlan\QRCode\QRCode::ECC_M,
+                'scale'      => 5,
+                'imageBase64' => false,
+            ]);
+            $qrData = (new \chillerlan\QRCode\QRCode($options))->render($verifyUrl);
             if (empty($qrData)) {
                 return;
             }
@@ -294,20 +416,78 @@ class FirmaDocPDFExport extends PDFExport
                 return;
             }
 
-            // Posición: inferior derecha, encima de la línea del pie de página
-            $qrSize = 55;
+            // Inferior derecha, con hueco propio: antes el QR estaba en y=34 y su texto
+            // en y=26, justo por debajo de la línea del pie (y=28), que lo atravesaba.
+            $qrSize = 58;
             $qrX = $pageW - $marginR - $qrSize;
-            $qrY = 34;
+            $qrY = 52;
 
             $this->pdf->addPngFromFile($tmpFile, $qrX, $qrY, $qrSize, $qrSize);
             @unlink($tmpFile);
 
-            // Texto debajo del QR
+            // Texto debajo del QR, todavía por encima de la línea del pie
             $this->pdf->setColor(0.5, 0.5, 0.5);
-            $this->pdf->addText($qrX, $qrY - 8, 6, $t('firmadoc-pdf-verify-qr'), $qrSize, 'center');
+            $this->pdf->addText($qrX - 10, $qrY - 9, 6, $t('firmadoc-pdf-verify-qr'), $qrSize + 20, 'center');
         } catch (\Exception $e) {
             // Silenciar errores para no romper el PDF
         }
+    }
+
+    /**
+     * Nombre legible del modo de firma empleado.
+     */
+    private function nombreModo(string $modo, callable $t): string
+    {
+        return match ($modo) {
+            'manuscrita'  => $t('firmadoc-pdf-mode-handwritten'),
+            'tipografica' => $t('firmadoc-pdf-mode-typographic'),
+            'certificado' => $t('firmadoc-pdf-mode-certificate'),
+            default       => '—',
+        };
+    }
+
+    /**
+     * Evidencias de trazabilidad del proceso de firma.
+     * Todo esto ya se guardaba en base de datos; simplemente no se publicaba.
+     */
+    private function filasTrazabilidad(object $firmante, FirmaDoc $firma, callable $t): array
+    {
+        $filas = [];
+
+        $apertura = $firmante->fecha_primera_apertura ?? $firma->fecha_primera_apertura ?? '';
+        if (!empty($apertura)) {
+            $filas[] = [$t('firmadoc-pdf-first-open'), $apertura];
+        }
+
+        $vistas = (int) ($firmante->veces_visto ?? $firma->veces_visto ?? 0);
+        if ($vistas > 0) {
+            $filas[] = [$t('firmadoc-pdf-times-seen'), (string) $vistas];
+        }
+
+        $ua = $firmante->user_agent ?? $firma->user_agent ?? '';
+        if (!empty($ua)) {
+            $filas[] = [$t('firmadoc-pdf-device'), $this->resumirUserAgent($ua)];
+        }
+
+        if (!empty($firma->acepto_legal) && !empty($firma->fecha_acepto_legal)) {
+            $filas[] = [$t('firmadoc-pdf-consent-accepted'), $firma->fecha_acepto_legal];
+        }
+
+        // La verificación en dos pasos es la evidencia más fuerte del certificado:
+        // acredita que quien firmó tenía acceso al buzón que registró la empresa.
+        if (!empty($firma->otp_verificado) && !empty($firma->otp_enviado_a)) {
+            $filas[] = [
+                $t('firmadoc-pdf-second-factor'),
+                $t('firmadoc-pdf-otp-verified', ['%email%' => FirmaDocOtp::ocultar($firma->otp_enviado_a)]),
+            ];
+        }
+
+        $observaciones = $firmante->observaciones ?? $firma->observaciones_firmante ?? '';
+        if (!empty($observaciones)) {
+            $filas[] = [$t('firmadoc-pdf-signer-notes'), mb_substr((string) $observaciones, 0, 90)];
+        }
+
+        return $filas;
     }
 
     private function resumirUserAgent(string $ua): string

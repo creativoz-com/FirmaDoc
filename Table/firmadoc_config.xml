@@ -144,6 +144,29 @@
         <type>text</type>
         <null>YES</null>
     </column>
+    <column>
+        <name>otp_activo</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
+    </column>
+    <column>
+        <name>otp_minutos</name>
+        <type>integer</type>
+        <null>NO</null>
+        <default>10</default>
+    </column>
+    <column>
+        <name>sello_activo</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
+    </column>
+    <column>
+        <name>sello_url</name>
+        <type>character varying(255)</type>
+        <null>YES</null>
+    </column>
       <constraint>
         <name>firmadoc_config_pkey</name>
         <type>PRIMARY KEY (id)</type>

@@ -11,7 +11,9 @@
 namespace FacturaScripts\Plugins\FirmaDoc\Mod;
 
 use FacturaScripts\Core\Base\DataBase;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
+use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
 
 class FirmaDocListExtension
 {
@@ -22,25 +24,34 @@ class FirmaDocListExtension
         'ListPedidoCliente'      => FirmaDoc::TIPO_PEDIDO,
     ];
 
-    private static array $badges = [
-        FirmaDoc::ESTADO_FIRMADO   => ['Firmado',   '#28a745', '#fff'],
-        FirmaDoc::ESTADO_PENDIENTE => ['Pendiente', '#ffc107', '#212529'],
-        FirmaDoc::ESTADO_EXPIRADO  => ['Expirado',  '#6c757d', '#fff'],
-        FirmaDoc::ESTADO_CANCELADO => ['Rechazado', '#dc3545', '#fff'],
-        'anulado_mod'              => ['Anulado',   '#343a40', '#fff'],
+    /** Colores de cada estado; la clave de idioma se traduce en loadData(). */
+    private static array $colores = [
+        FirmaDoc::ESTADO_FIRMADO     => ['firmadoc-badge-signed',   '#28a745', '#fff'],
+        FirmaDoc::ESTADO_PENDIENTE   => ['firmadoc-badge-pending',  '#ffc107', '#212529'],
+        FirmaDoc::ESTADO_EXPIRADO    => ['firmadoc-badge-expired',  '#6c757d', '#fff'],
+        FirmaDoc::ESTADO_CANCELADO   => ['firmadoc-badge-rejected', '#dc3545', '#fff'],
+        FirmaDoc::ESTADO_ANULADO_MOD => ['firmadoc-badge-voided',          '#343a40', '#fff'],
     ];
 
     public function loadData(): \Closure
     {
+        // OJO: esta clase no puede tener ningún método auxiliar. FacturaScripts invoca
+        // por reflexión TODOS los métodos de una extensión —públicos, protegidos y
+        // privados— y exige que cada uno devuelva un Closure (Core/Template/ExtensionsTrait.php).
+        // Un simple helper aquí revienta el arranque de la aplicación entera.
         $tipoMap = self::$tipoMap;
-        $badges  = self::$badges;
+
+        $badges = [];
+        foreach (self::$colores as $estado => [$clave, $bg, $color]) {
+            $badges[$estado] = [Tools::lang()->trans($clave), $bg, $color];
+        }
 
         return function (string $viewName, $view) use ($tipoMap, $badges) {
 
             // Determinar tipo de documento por el nombre del controller
             $controllerName = $this->getPageData()['name'] ?? '';
             $tipo = $tipoMap[$controllerName] ?? null;
-            if (!$tipo) {
+            if (!$tipo || !FirmaDocConfig::estaActivo($tipo)) {
                 return;
             }
 
@@ -68,15 +79,17 @@ class FirmaDocListExtension
             $db     = new DataBase();
             $safe   = $db->escapeString($tipo);
             $idsStr = implode(',', array_map('intval', $ids));
-            $sql    = "SELECT id_doc, estado FROM firmadoc
+            $sql    = "SELECT id, id_doc, estado, doc_hash FROM firmadoc
                        WHERE tipo_doc = '" . $safe . "' AND id_doc IN (" . $idsStr . ")
                        ORDER BY id DESC";
 
             $estados = [];
+            $hashes  = [];
             foreach ($db->select($sql) as $row) {
                 $idDoc = (int)$row['id_doc'];
                 if (!isset($estados[$idDoc])) {
                     $estados[$idDoc] = $row['estado'];
+                    $hashes[$idDoc]  = $row['doc_hash'];
                 }
             }
 
@@ -88,6 +101,17 @@ class FirmaDocListExtension
                 if ($estado === null) {
                     $model->firmadoc_estado_badge = '';
                     continue;
+                }
+
+                // Si el documento cambió después de firmarse, el estado guardado sigue
+                // diciendo «firmado»: eso depende de que el hook de modificación se
+                // disparara. Aquí se recalcula la huella y manda lo que diga la huella.
+                if ($estado === FirmaDoc::ESTADO_FIRMADO && !empty($hashes[$id])) {
+                    $firmaComp = new FirmaDoc();
+                    $firmaComp->doc_hash = $hashes[$id];
+                    if ($firmaComp->documentoSinModificar($model) === false) {
+                        $estado = FirmaDoc::ESTADO_ANULADO_MOD;
+                    }
                 }
 
                 [$label, $bg, $color] = $badges[$estado] ?? [$estado, '#6c757d', '#fff'];

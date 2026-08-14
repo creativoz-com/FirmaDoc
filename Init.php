@@ -21,7 +21,10 @@ class Init extends InitClass
 {
     public function init(): void
     {
-        $config = FirmaDocConfig::getConfig();
+        // init() se ejecuta en TODAS las peticiones del ERP (pantallas, AJAX, API, cron).
+        // Aquí no se consulta ni se escribe en base de datos: las extensiones se registran
+        // siempre y cada una decide si actúa leyendo la configuración cuando ya está en
+        // su propio contexto. Ver FirmaDocConfig::estaActivo().
 
         // ── Mapa de tipos de documento → controladores ────────────────────
         $mapaTab = [
@@ -51,12 +54,7 @@ class Init extends InitClass
             ],
         ];
 
-        foreach ($mapaTab as $configKey => $clases) {
-            // Solo si el tipo de documento está activo en configuración
-            if (!$config->$configKey) {
-                continue;
-            }
-
+        foreach ($mapaTab as $clases) {
             // Tab de firma en ficha del documento
             if (class_exists($clases['edit'])) {
                 $clases['edit']::addExtension(

@@ -35,6 +35,12 @@ class FirmaDoc extends ModelClass
     const TIPO_ALBARAN      = 'albaran';
     const TIPO_PEDIDO       = 'pedido';
 
+    /**
+     * Documento subido por el usuario (contrato, anexo, autorización…) que no procede
+     * de ningún documento de venta de FacturaScripts.
+     */
+    const TIPO_EXTERNO      = 'externo';
+
     /** @var int Identificador único */
     public $id;
 
@@ -125,6 +131,36 @@ class FirmaDoc extends ModelClass
     /** @var string Modo multi-firmante: unico, paralelo, secuencial */
     public $modo_multifirma;
 
+    /** @var string|null Título del documento externo, para identificarlo */
+    public $titulo;
+
+    /** @var string|null Código público de verificación, propio y único */
+    public $codigo_verificacion;
+
+    /** @var string|null Código de un solo uso enviado al firmante */
+    public $otp_codigo;
+
+    /** @var string|null Caducidad del código de un solo uso */
+    public $otp_expira;
+
+    /** @var int Intentos fallidos de introducir el código */
+    public $otp_intentos;
+
+    /** @var bool Si el firmante ya superó la verificación en dos pasos */
+    public $otp_verificado;
+
+    /** @var string|null Dirección a la que se envió el código */
+    public $otp_enviado_a;
+
+    /** @var string|null Token del sello de tiempo (RFC 3161) en base64 */
+    public $sello_tiempo;
+
+    /** @var string|null Fecha certificada por la autoridad de sellado */
+    public $sello_fecha;
+
+    /** @var string|null Autoridad que emitió el sello */
+    public $sello_autoridad;
+
     /**
      * Nombre de la tabla en la base de datos
      */
@@ -149,6 +185,8 @@ class FirmaDoc extends ModelClass
         parent::clear();
         $this->estado                   = self::ESTADO_PENDIENTE;
         $this->email_empresa_notificado = false;
+        $this->otp_intentos             = 0;
+        $this->otp_verificado           = false;
         $this->fecha_envio              = date('d-m-Y H:i:s');
     }
 
@@ -263,12 +301,24 @@ class FirmaDoc extends ModelClass
     }
 
     /**
-     * Calcula un hash del documento para detectar modificaciones posteriores
+     * Calcula la huella del documento, para detectar modificaciones posteriores.
+     *
+     * Desde la v1.4 es SHA-256. Las firmas anteriores llevan MD5 y se siguen pudiendo
+     * verificar: se distinguen por la longitud del hash guardado (32 frente a 64), así
+     * que no hace falta migrar nada ni invalidar lo ya firmado.
+     *
+     * @param string $algoritmo Solo para recomprobar firmas antiguas; en firmas nuevas
+     *                          se deja el valor por defecto.
      */
-    public static function calcularHashDoc(object $documento): string
+    public static function calcularHashDoc(object $documento, string $algoritmo = 'sha256'): string
     {
-        // Campos de cabecera
+        // Campos de cabecera. Se incluyen empresa, serie y fecha para que dos documentos
+        // de contenido idéntico —mismo importe, mismo cliente— no den la misma huella.
         $datos = [
+            (string)($documento->idempresa ?? ''),
+            (string)($documento->codserie ?? ''),
+            (string)($documento->codigo ?? ''),
+            (string)($documento->fecha ?? ''),
             round((float)($documento->total ?? 0), 4),
             round((float)($documento->neto ?? 0), 4),
             round((float)($documento->totaliva ?? 0), 4),
@@ -288,7 +338,117 @@ class FirmaDoc extends ModelClass
                 $datos[] = round((float)($linea->dtopor ?? 0), 4);
             }
         }
-        return md5(json_encode($datos));
+        return hash($algoritmo, json_encode($datos));
+    }
+
+    /**
+     * Recalcula la huella del documento con el mismo algoritmo con el que se guardó
+     * y la compara con la almacenada. Devuelve null si no se puede comprobar.
+     */
+    public function documentoSinModificar(object $documento): ?bool
+    {
+        if (empty($this->doc_hash)) {
+            return null;
+        }
+
+        // En documentos externos la huella es la del PDF subido
+        if ($this->esExterno()) {
+            $ruta = property_exists($documento, 'path') && !empty($documento->path)
+                ? FS_FOLDER . '/' . $documento->path
+                : '';
+            if (empty($ruta) || !is_readable($ruta)) {
+                return null;
+            }
+            return hash_equals((string) $this->doc_hash, self::calcularHashFichero($ruta));
+        }
+
+        // 32 caracteres = MD5 de una firma anterior a la v1.4; 64 = SHA-256
+        $algoritmo = strlen($this->doc_hash) === 32 ? 'md5' : 'sha256';
+
+        return hash_equals(
+            (string) $this->doc_hash,
+            self::calcularHashDoc($documento, $algoritmo)
+        );
+    }
+
+    /**
+     * True si la firma es sobre un PDF subido, no sobre un documento de venta.
+     */
+    public function esExterno(): bool
+    {
+        return $this->tipo_doc === self::TIPO_EXTERNO;
+    }
+
+    /**
+     * Fichero adjunto de un documento externo. En estas firmas `id_doc` guarda el
+     * identificador del AttachedFile, que es donde FacturaScripts custodia el PDF.
+     */
+    public function getFichero(): ?\FacturaScripts\Core\Model\AttachedFile
+    {
+        if (!$this->esExterno() || empty($this->id_doc)) {
+            return null;
+        }
+        return \FacturaScripts\Core\Model\AttachedFile::find($this->id_doc);
+    }
+
+    /**
+     * Huella de un PDF subido: SHA-256 del fichero entero.
+     *
+     * Para un documento externo la huella es más sólida que para uno de venta, porque
+     * cubre el fichero byte a byte en lugar de un resumen de sus campos.
+     */
+    public static function calcularHashFichero(string $ruta): string
+    {
+        return is_readable($ruta) ? hash_file('sha256', $ruta) : '';
+    }
+
+    /**
+     * Nombre con el que se presenta la firma en pantallas y correos.
+     */
+    public function getTitulo(): string
+    {
+        if (!empty($this->titulo)) {
+            return $this->titulo;
+        }
+        return trim(ucfirst($this->tipo_doc ?? '') . ' ' . ($this->codigo_doc ?? ''));
+    }
+
+    /**
+     * Genera el código público de verificación.
+     *
+     * Es un identificador propio y único, no la huella del documento: el portal
+     * buscaba por `doc_hash` y dos documentos de contenido idéntico devolvían el
+     * expediente equivocado. Además, así el código impreso en el certificado no
+     * revela la huella del contenido.
+     */
+    public function generarCodigoVerificacion(): string
+    {
+        do {
+            // Base32 sin caracteres ambiguos: se lee y se teclea sin equivocarse
+            $alfabeto = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+            $codigo = '';
+            for ($i = 0; $i < 16; $i++) {
+                $codigo .= $alfabeto[random_int(0, strlen($alfabeto) - 1)];
+            }
+        } while (self::getByCodigoVerificacion($codigo) !== null);
+
+        $this->codigo_verificacion = $codigo;
+        return $codigo;
+    }
+
+    public static function getByCodigoVerificacion(string $codigo): ?self
+    {
+        if (empty($codigo)) {
+            return null;
+        }
+        $model = new self();
+        $lista = $model->all(
+            [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('codigo_verificacion', $codigo)],
+            [],
+            0,
+            1
+        );
+        return empty($lista) ? null : $lista[0];
     }
 
     /**
@@ -333,15 +493,18 @@ class FirmaDoc extends ModelClass
     public function test(): bool
     {
         if (empty($this->tipo_doc)) {
-            \FacturaScripts\Core\Tools::log()->error('FirmaDoc: tipo_doc es obligatorio');
+            \FacturaScripts\Core\Tools::log()->error(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-model-tipodoc-required'));
             return false;
         }
         if (empty($this->id_doc)) {
-            \FacturaScripts\Core\Tools::log()->error('FirmaDoc: id_doc es obligatorio');
+            \FacturaScripts\Core\Tools::log()->error(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-model-iddoc-required'));
             return false;
         }
         if (empty($this->token)) {
             $this->generarToken();
+        }
+        if (empty($this->codigo_verificacion)) {
+            $this->generarCodigoVerificacion();
         }
         return parent::test();
     }

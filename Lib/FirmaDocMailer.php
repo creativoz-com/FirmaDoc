@@ -42,7 +42,7 @@ class FirmaDocMailer
         try {
             $config        = FirmaDocConfig::getConfig();
             $baseUrl       = self::getBaseUrl();
-            $nombreEmpresa = self::getNombreEmpresaPublic();
+            $nombreEmpresa = self::getNombreEmpresaPublic($mainModel);
 
             foreach ($firmantes as $firmante) {
                 if ($modoMulti === FirmaDoc::MODO_SECUENCIAL && $firmante->estado === FirmaDocFirmante::ESTADO_ESPERANDO) {
@@ -78,7 +78,7 @@ class FirmaDocMailer
         try {
             $config        = FirmaDocConfig::getConfig();
             $baseUrl       = self::getBaseUrl();
-            $nombreEmpresa = self::getNombreEmpresaPublic();
+            $nombreEmpresa = self::getNombreEmpresaPublic($mainModel);
 
             $emailDest  = $firmante ? $firmante->email : $firma->email_cliente;
             $datos      = self::getDatos($firma, $mainModel, $firmante, $baseUrl, $nombreEmpresa);
@@ -123,22 +123,18 @@ class FirmaDocMailer
             $mail->addAddress($firmante->email);
             $mail->title = Tools::lang()->trans('firmadoc-email-sign-request', ['%code%' => $firma->codigo_doc]);
             $mail->addMainBlock(new TitleBlock(Tools::lang()->trans('firmadoc-email-your-turn'), 'h2'));
-            $mail->addMainBlock(new TextBlock(
-                Tools::lang()->trans('firmadoc-email-doc-ready', [
-                    '%type%' => ucfirst($firma->tipo_doc),
-                    '%code%' => $firma->codigo_doc
-                ])
-            ));
+
+            $texto = Tools::lang()->trans('firmadoc-email-doc-ready', [
+                '%type%' => ucfirst($firma->tipo_doc),
+                '%code%' => $firma->codigo_doc
+            ]);
             if ($firma->fecha_expiracion) {
-                $mail->addMainBlock(new TextBlock(
-                    Tools::lang()->trans('firmadoc-email-valid-until', ['%date%' => $firma->fecha_expiracion])
-                ));
+                $texto .= "\n\n" . Tools::lang()->trans('firmadoc-email-valid-until', [
+                    '%date%' => $firma->fecha_expiracion,
+                ]);
             }
-            $mail->addMainBlock(new TextBlock(
-                '<a href="' . $link . '" style="background:#007bff;color:#fff;padding:10px 24px;'
-                . 'border-radius:4px;text-decoration:none;display:inline-block;margin-top:12px;font-weight:600;">'
-                . Tools::lang()->trans('firmadoc-email-sign-now') . '</a>'
-            ));
+
+            FirmaDocEmail::montar($mail, $texto, $link, Tools::lang()->trans('firmadoc-email-sign-now'));
             $mail->send();
 
             FirmaDocReenvio::registrar(
@@ -158,23 +154,32 @@ class FirmaDocMailer
     }
 
     /**
-     * Elimina los registros EmailNotification que FirmaDoc pudo haber creado en versiones anteriores.
-     * Usa el modelo de FS en lugar de SQL directo para compatibilidad MySQL/PostgreSQL.
+     * Elimina únicamente los registros EmailNotification creados por FirmaDoc con su
+     * propio prefijo ('firmadoc-*') en versiones antiguas.
+     *
+     * Deliberadamente NO borra los 'sendmail-*': son plantillas del núcleo y pueden
+     * contener texto escrito por el usuario. Si alguna quedó contaminada por una
+     * versión anterior del plugin, se avisa por el log y decide el usuario.
      */
     public static function limpiarPlantillasContaminadas(): void
     {
         try {
             $notif = new \FacturaScripts\Core\Model\EmailNotification();
-            $todos = $notif->all([], [], 0, 100);
-            foreach ($todos as $n) {
+            foreach ($notif->all([], [], 0, 500) as $n) {
+                // Solo se borra lo que creó FirmaDoc con su propio prefijo
                 if (strpos($n->name, 'firmadoc-') === 0) {
                     $n->delete();
                     continue;
                 }
+
+                // Los 'sendmail-*' son del núcleo y pueden llevar texto del usuario:
+                // si una versión antigua los contaminó, se avisa, pero no se borran.
                 if (strpos($n->name, 'sendmail-') === 0
                     && (strpos($n->body ?? '', 'FirmaDocPublic') !== false
                         || strpos($n->body ?? '', 'link_firma') !== false)) {
-                    $n->delete();
+                    Tools::log()->warning(Tools::lang()->trans('firmadoc-template-needs-review', [
+                        '%name%' => $n->name,
+                    ]));
                 }
             }
         } catch (\Exception $e) {
@@ -191,7 +196,7 @@ class FirmaDocMailer
         try {
             $config        = FirmaDocConfig::getConfig();
             $baseUrl       = self::getBaseUrl();
-            $nombreEmpresa = self::getNombreEmpresaPublic();
+            $nombreEmpresa = self::getNombreEmpresaPublic($mainModel);
 
             $linkDoc = $baseUrl . '/FirmaDocPublic?token=' . $firma->token . '&action=ver_pdf';
 
@@ -228,7 +233,13 @@ class FirmaDocMailer
                 if (!$mailFirmante->canSendMail()) break;
                 $mailFirmante->addAddress($firmante->email);
                 $mailFirmante->title = $emailAsunto;
-                $mailFirmante->addMainBlock(new TextBlock($emailCuerpo));
+                FirmaDocEmail::montar(
+                    $mailFirmante,
+                    $emailCuerpo,
+                    $linkDoc,
+                    Tools::lang()->trans('firmadoc-email-view-signed'),
+                    $mainModel
+                );
                 $mailFirmante->send();
 
                 FirmaDocReenvio::registrar(
@@ -257,7 +268,13 @@ class FirmaDocMailer
                 if ($mailEmpresa->canSendMail()) {
                     $mailEmpresa->addAddress($emailEmpresa);
                     $mailEmpresa->title = Tools::lang()->trans('firmadoc-email-company-copy', ['%subject%' => $asuntoEmpresa]);
-                    $mailEmpresa->addMainBlock(new TextBlock($cuerpoEmpresa));
+                    FirmaDocEmail::montar(
+                        $mailEmpresa,
+                        $cuerpoEmpresa,
+                        $linkDoc,
+                        Tools::lang()->trans('firmadoc-email-view-signed'),
+                        $mainModel
+                    );
                     $mailEmpresa->send();
                 }
             }
@@ -284,7 +301,15 @@ class FirmaDocMailer
 
         $mail->addAddress($emailDest);
         $mail->title = $asunto ?: (Tools::lang()->trans('firmadoc-email-pending-sign', ['%code%' => ($datos['codigo_doc'] ?? '')]));
-        $mail->addMainBlock(new TextBlock($cuerpo));
+
+        FirmaDocEmail::montar(
+            $mail,
+            $cuerpo,
+            $datos['link_firma'] ?? '',
+            Tools::lang()->trans('firmadoc-email-sign-now'),
+            $datos['documento'] ?? null
+        );
+
         $mail->send();
 
         return true;
@@ -292,16 +317,31 @@ class FirmaDocMailer
 
     private static function getBaseUrl(): string
     {
-        $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-        $host   = $_SERVER['HTTP_HOST'] ?? Tools::config('webserver_host', 'localhost');
-        $subdir = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
-        return rtrim($scheme . '://' . $host . $subdir, '/');
+        return FirmaDocUrl::base();
     }
 
-    public static function getNombreEmpresaPublic(): string
+    /**
+     * Nombre de la empresa que emite el documento.
+     *
+     * Antes esto era loadFromCode(1): en instalaciones multiempresa los emails salían
+     * firmados por la empresa equivocada. Ahora manda la empresa del propio documento
+     * y, si no se conoce, la empresa por defecto de la instalación.
+     */
+    public static function getNombreEmpresaPublic($mainModel = null): string
     {
         $empresa = new \FacturaScripts\Core\Model\Empresa();
-        return $empresa->loadFromCode(1) ? $empresa->nombre : '';
+
+        if ($mainModel !== null && !empty($mainModel->idempresa)
+            && $empresa->loadFromCode($mainModel->idempresa)) {
+            return $empresa->nombre;
+        }
+
+        $porDefecto = Tools::settings('default', 'idempresa', 0);
+        if (!empty($porDefecto) && $empresa->loadFromCode($porDefecto)) {
+            return $empresa->nombre;
+        }
+
+        return '';
     }
 
     private static function getDatos(FirmaDoc $firma, $mainModel, $firmante, string $baseUrl, string $nombreEmpresa): array
@@ -312,6 +352,7 @@ class FirmaDocMailer
             : ($mainModel->nombrecliente ?? '');
 
         return [
+            'documento'        => $mainModel,
             'cliente'          => $nombreDest,
             'empresa'          => $nombreEmpresa,
             'tipo_doc'         => ucfirst($firma->tipo_doc),

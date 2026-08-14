@@ -16,11 +16,18 @@ use FacturaScripts\Core\Lib\Email\TitleBlock;
 use FacturaScripts\Core\Lib\Email\TextBlock;
 use FacturaScripts\Core\Lib\Email\TableBlock;
 use FacturaScripts\Core\Tools;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocEmail;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocEmpresa;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPdfUnir;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPDFExport;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocFirmante;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocOtp;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocSelloTiempo;
 
 class FirmaDocPublic extends Controller
 {
@@ -41,6 +48,24 @@ class FirmaDocPublic extends Controller
     public $linkDocumento = '';
     public $urlBase = '';
 
+    /** @var string Nombre de la empresa que envía el documento */
+    public $empresaNombre = '';
+
+    /** @var string URL del logo de la empresa, vacía si no tiene */
+    public $empresaLogo = '';
+
+    /** @var string Importe del documento ya formateado, vacío si no aplica */
+    public $importeDoc = '';
+
+    /** @var bool True cuando hay que pedir el código de un solo uso antes de firmar */
+    public $pideOtp = false;
+
+    /** @var string Dirección enmascarada a la que se envió el código */
+    public $otpDestino = '';
+
+    /** @var string Mensaje de error del código, ya traducido */
+    public $otpError = '';
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
@@ -54,8 +79,7 @@ class FirmaDocPublic extends Controller
     public function publicCore(&$response)
     {
         parent::publicCore($response);
-        if ($this->request->get('action', '') === 'ver_pdf') {
-            $this->servirPdf($response);
+        if ($this->servirDescarga($response)) {
             return;
         }
         $this->procesarFirma();
@@ -65,12 +89,44 @@ class FirmaDocPublic extends Controller
     public function privateCore(&$response, $user, $permissions)
     {
         parent::privateCore($response, $user, $permissions);
-        if ($this->request->get('action', '') === 'ver_pdf') {
-            $this->servirPdf($response);
+        if ($this->servirDescarga($response)) {
             return;
         }
         $this->procesarFirma();
         $this->setTemplate('FirmaDocPublic');
+    }
+
+    /**
+     * Atiende las descargas del enlace público.
+     *
+     * @return bool true si la petición era una descarga y ya está resuelta
+     */
+    private function servirDescarga(&$response): bool
+    {
+        $accion = $this->request->get('action', '');
+
+        if ($accion === 'ver_pdf') {
+            $this->servirPdf($response);
+            return true;
+        }
+
+        if ($accion === 'ver_certificado') {
+            $firma = FirmaDoc::getByToken($this->request->get('token', ''));
+            if (null === $firma) {
+                $firmante = FirmaDocFirmante::getByToken($this->request->get('token', ''));
+                $padre = new FirmaDoc();
+                $firma = ($firmante && $padre->loadFromCode($firmante->id_firmadoc)) ? $padre : null;
+            }
+            if (null === $firma) {
+                $this->setTemplate(false);
+                $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-invalid-link') . '</h1>');
+                return true;
+            }
+            $this->servirCertificado($response, $firma);
+            return true;
+        }
+
+        return false;
     }
 
     private function servirPdf(&$response): void
@@ -118,7 +174,30 @@ class FirmaDocPublic extends Controller
             return;
         }
 
-        // Generar PDF — si está firmado añade página de certificado
+        $pdfContent = $firma->esExterno()
+            ? $this->pdfDocumentoExterno($firma, $documento)
+            : $this->pdfDocumentoVenta($firma, $documento);
+
+        if ($pdfContent === '') {
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-document-not-found') . '</h1>');
+            return;
+        }
+
+        $nombre = $firma->esExterno()
+            ? ($documento->filename ?? 'documento.pdf')
+            : ($documento->codigo ?? 'documento') . '.pdf';
+
+        $response->headers->set('Content-Type', 'application/pdf');
+        $response->headers->set('Content-Disposition', 'inline; filename="' . $nombre . '"');
+        $response->setContent($pdfContent);
+    }
+
+    /**
+     * PDF de un documento de venta: se compone al vuelo y, si está firmado, se le
+     * añade la página de certificado.
+     */
+    private function pdfDocumentoVenta(FirmaDoc $firma, object $documento): string
+    {
         $export = new FirmaDocPDFExport();
         $export->newDoc($documento->codigo ?? '', 0, '');
         $export->addBusinessDocPage($documento);
@@ -127,11 +206,58 @@ class FirmaDocPublic extends Controller
             $export->addCertificadoFirma($firma, $documento);
         }
 
-        // Generar y servir el PDF directamente sin caché
-        $pdfContent = $export->getDoc();
+        return $export->getDoc();
+    }
+
+    /**
+     * PDF de un documento subido.
+     *
+     * El fichero original **no se modifica nunca**: es el documento que el firmante
+     * aceptó, y alterarlo invalidaría su propia huella. Si está firmado se le añade el
+     * certificado como páginas finales, pero solo cuando el servidor tiene una
+     * herramienta para unir PDF; si no la tiene, se entrega el original y el
+     * certificado se descarga aparte.
+     */
+    private function pdfDocumentoExterno(FirmaDoc $firma, object $documento): string
+    {
+        $ruta = FirmaDocDocumento::rutaFicheroExterno($firma);
+        if ($ruta === '') {
+            return '';
+        }
+
+        $original = (string) file_get_contents($ruta);
+
+        if ($firma->estado !== FirmaDoc::ESTADO_FIRMADO) {
+            return $original;
+        }
+
+        $certificado = FirmaDocPDFExport::certificadoSuelto($firma, $documento);
+        $unido = FirmaDocPdfUnir::unir($ruta, $certificado);
+
+        return $unido ?? $original;
+    }
+
+    /**
+     * Sirve solo el certificado de firma, para cuando no se puede unir al original.
+     */
+    private function servirCertificado(&$response, FirmaDoc $firma): void
+    {
+        $this->setTemplate(false);
+
+        if ($firma->estado !== FirmaDoc::ESTADO_FIRMADO) {
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-available-after-signing') . '</h1>');
+            return;
+        }
+
+        $documento = $this->cargarDocumento($firma->tipo_doc, (int) $firma->id_doc);
+        if (!$documento) {
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-document-not-found') . '</h1>');
+            return;
+        }
+
         $response->headers->set('Content-Type', 'application/pdf');
-        $response->headers->set('Content-Disposition', 'inline; filename=' . $documento->codigo . '.pdf');
-        $response->setContent($pdfContent);
+        $response->headers->set('Content-Disposition', 'inline; filename="certificado.pdf"');
+        $response->setContent(FirmaDocPDFExport::certificadoSuelto($firma, $documento));
     }
 
     private function procesarFirma(): void
@@ -174,12 +300,19 @@ class FirmaDocPublic extends Controller
             }
             // Si el firmante ya firmó
             if ($firmante->estado === FirmaDocFirmante::ESTADO_FIRMADO) {
+                $this->cargarDatosEmpresa();
                 $this->mensaje     = Tools::lang()->trans('firmadoc-already-signed-thanks');
                 $this->mensajeTipo = 'success';
                 $this->calcularLinkDocumento();
                 return;
             }
         }
+
+        // Quién envía el documento y por cuánto. Se calcula antes de mirar el estado
+        // porque la cabecera debe identificar a la empresa en todos los casos: también
+        // si el enlace está caducado, cancelado o ya firmado. Sin esto el firmante ve
+        // una página anónima pidiéndole su nombre y su DNI.
+        $this->cargarDatosEmpresa();
 
         if ($this->firma->estado === FirmaDoc::ESTADO_FIRMADO) {
             $this->mensaje     = Tools::lang()->trans('firmadoc-document-already-signed');
@@ -219,10 +352,97 @@ class FirmaDocPublic extends Controller
         $this->registrarApertura();
 
         $action = $this->request->request->get('action', '');
+
+        // Verificación en dos pasos. Rechazar el documento no la exige: negarse a firmar
+        // no compromete a nadie, y obligar a un código para decir «no» solo consigue que
+        // el firmante abandone sin contestar.
+        if ($action !== 'rechazar' && !$this->resolverOtp($action)) {
+            return;
+        }
+
         if ($action === 'firmar') {
             $this->registrarFirma();
         } elseif ($action === 'rechazar') {
             $this->procesarRechazo();
+        }
+    }
+
+    /**
+     * Gestiona la verificación en dos pasos.
+     *
+     * @return bool true si se puede continuar hacia el formulario de firma
+     */
+    private function resolverOtp(string $action): bool
+    {
+        if (empty($this->config->otp_activo)) {
+            return true;
+        }
+
+        // En multi-firmante el código es de cada firmante, no de la solicitud
+        $registro = $this->firmanteActual ?: $this->firma;
+
+        if (FirmaDocOtp::verificado($registro)) {
+            return true;
+        }
+
+        $destino = $this->firmanteActual
+            ? $this->firmanteActual->email
+            : $this->firma->email_cliente;
+
+        if (empty($destino)) {
+            // Sin dirección no hay segundo factor posible: se avisa y no se deja firmar,
+            // porque saltárselo en silencio dejaría la firma sin la garantía prometida.
+            $this->tokenValido = false;
+            $this->mensaje     = Tools::lang()->trans('firmadoc-otp-no-address');
+            $this->mensajeTipo = 'danger';
+            return false;
+        }
+
+        $this->pideOtp    = true;
+        $this->tokenValido = false;
+        $this->otpDestino = FirmaDocOtp::ocultar($destino);
+
+        if ($action === 'comprobar_otp') {
+            $error = FirmaDocOtp::comprobar($registro, $this->request->request->get('otp_codigo', ''));
+            if ($error === '') {
+                $this->pideOtp     = false;
+                $this->tokenValido = true;
+                return true;
+            }
+            $this->otpError = Tools::lang()->trans($error);
+            return false;
+        }
+
+        if ($action === 'reenviar_otp' || empty($registro->otp_codigo)) {
+            $documento = $this->cargarDocumento($this->firma->tipo_doc, (int) $this->firma->id_doc);
+            if (!FirmaDocOtp::enviar($registro, $destino, (int) $this->config->otp_minutos, $documento)) {
+                $this->otpError = Tools::lang()->trans('firmadoc-otp-send-failed');
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Carga el nombre y el logo de la empresa emisora y el importe del documento,
+     * que es lo que permite al firmante saber quién le pide la firma y por cuánto.
+     */
+    private function cargarDatosEmpresa(): void
+    {
+        if (!$this->firma) {
+            return;
+        }
+
+        $documento = $this->cargarDocumento($this->firma->tipo_doc, (int) $this->firma->id_doc);
+
+        $this->empresaNombre = FirmaDocEmpresa::nombre($documento);
+
+        if ($this->config->mostrar_logo) {
+            $this->empresaLogo = FirmaDocEmpresa::logoUrl($documento);
+        }
+
+        if ($documento && isset($documento->total)) {
+            $this->importeDoc = Tools::money((float) $documento->total, $documento->coddivisa ?? '');
         }
     }
 
@@ -248,15 +468,10 @@ class FirmaDocPublic extends Controller
             if (!$hayFirmado) return;
         }
 
-        $scheme  = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-        $host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $subdir  = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
-
-        $this->urlBase = $scheme . '://' . $host . $subdir;
+        $this->urlBase = FirmaDocUrl::base();
 
         // El link del PDF usa el token maestro (ver_pdf busca en firmadoc directamente)
-        $this->linkDocumento = $scheme . '://' . $host . $subdir
-            . '/FirmaDocPublic?token=' . $this->firma->token . '&action=ver_pdf';
+        $this->linkDocumento = FirmaDocUrl::firma($this->firma->token) . '&action=ver_pdf';
     }
 
     private function registrarApertura(): void
@@ -322,6 +537,10 @@ class FirmaDocPublic extends Controller
             }
 
             $mail->title = Tools::lang()->trans('firmadoc-email-rejected-subject', ['%code%' => $this->firma->codigo_doc]);
+            $logo = FirmaDocEmail::logo($this->cargarDocumento($this->firma->tipo_doc, (int) $this->firma->id_doc));
+            if ($logo !== null) {
+                $mail->addMainBlock($logo);
+            }
             $mail->addMainBlock(new TitleBlock(Tools::lang()->trans('firmadoc-email-rejected-title'), 'h2'));
             $mail->addMainBlock(new TextBlock(
                 Tools::lang()->trans('firmadoc-email-rejected-body', [
@@ -336,6 +555,15 @@ class FirmaDocPublic extends Controller
                 [Tools::lang()->trans('firmadoc-field-ip'),       $this->firma->ip_cliente ?? '—'],
             ];
             $mail->addMainBlock(new TableBlock([Tools::lang()->trans('firmadoc-field-field'), Tools::lang()->trans('firmadoc-field-detail')], $filas));
+
+            $enlaceDoc = FirmaDocUrl::firma($this->firma->token);
+            if (!empty($enlaceDoc)) {
+                $mail->addMainBlock(FirmaDocEmail::boton(
+                    $enlaceDoc,
+                    Tools::lang()->trans('firmadoc-email-view-document')
+                ));
+            }
+
             $mail->send();
         } catch (\Exception $e) {
             Tools::log()->error(Tools::lang()->trans('firmadoc-error-rejection-notification', ['%error%' => $e->getMessage()]));
@@ -356,6 +584,22 @@ class FirmaDocPublic extends Controller
             return;
         }
 
+        // El endpoint es público: no vale fiarse de que el navegador haya acotado la
+        // imagen. Se comprueba que sea un PNG en base64 y que quepa en la columna,
+        // que es de tipo `text` (65.535 bytes en MySQL).
+        if (!empty($firmaImagen)) {
+            if (strpos($firmaImagen, 'data:image/png;base64,') !== 0) {
+                $this->mensaje     = Tools::lang()->trans('firmadoc-signature-invalid-format');
+                $this->mensajeTipo = 'danger';
+                return;
+            }
+            if (strlen($firmaImagen) > 65000) {
+                $this->mensaje     = Tools::lang()->trans('firmadoc-signature-too-large');
+                $this->mensajeTipo = 'danger';
+                return;
+            }
+        }
+
         $this->firma->firma_imagen       = $firmaImagen;
         $this->firma->firma_nombre       = $firmaNombre;
         $this->firma->firma_nif          = $firmaNif;
@@ -368,9 +612,15 @@ class FirmaDocPublic extends Controller
         $this->firma->observaciones_firmante = trim($this->request->request->get('observaciones_firmante', '')) ?: null;
         $certData = trim($this->request->request->get('firma_certificado_data', ''));
         $this->firma->firma_certificado_data = $certData ?: null;
-        if ($certData) {
-            $this->firma->modo_firma = 'certificado';
-        }
+
+        // El modo se guarda siempre, no solo cuando hay certificado: es un dato del
+        // certificado de firma y antes salía como «—» en manuscrita y tipográfica.
+        $modoEnviado = $this->request->request->get('modo_firma', '');
+        $this->firma->modo_firma = $certData
+            ? 'certificado'
+            : (in_array($modoEnviado, ['manuscrita', 'tipografica'], true)
+                ? $modoEnviado
+                : ($firmaImagen ? 'manuscrita' : 'tipografica'));
         $this->firma->estado             = FirmaDoc::ESTADO_FIRMADO;
 
         // Si hay firmante individual, primero actualizar su registro
@@ -405,6 +655,11 @@ class FirmaDocPublic extends Controller
             }
         }
 
+        // Sello de tiempo: la fecha de la firma la certifica un tercero, no el reloj
+        // del servidor del emisor. Si la TSA falla, se firma igual y se avisa por el
+        // log: perder la firma por una caída de un servicio externo sería peor.
+        $this->sellarSiProcede();
+
         if ($this->firma->save()) {
             $this->tokenValido = false;
             $this->firmantesHanFirmado = $this->firmantesTotal ?: 1;
@@ -432,6 +687,36 @@ class FirmaDocPublic extends Controller
 
 
     /**
+     * Pide el sello de tiempo a la autoridad configurada y lo guarda en la firma.
+     */
+    private function sellarSiProcede(): void
+    {
+        if (empty($this->config->sello_activo) || empty($this->firma->doc_hash)) {
+            return;
+        }
+
+        // Solo se sella SHA-256: las firmas anteriores a la v1.4 llevan MD5, que ninguna
+        // autoridad seria acepta y que tampoco tendría sentido certificar ahora.
+        if (strlen($this->firma->doc_hash) !== 64) {
+            return;
+        }
+
+        $sello = FirmaDocSelloTiempo::sellar(
+            $this->firma->doc_hash,
+            (string) ($this->config->sello_url ?? '')
+        );
+
+        if ($sello === null) {
+            Tools::log()->warning(Tools::lang()->trans('firmadoc-tsa-failed'));
+            return;
+        }
+
+        $this->firma->sello_tiempo    = $sello['token'];
+        $this->firma->sello_fecha     = $sello['fecha'];
+        $this->firma->sello_autoridad = $sello['autoridad'];
+    }
+
+    /**
      * Gestiona el avance secuencial tras una firma.
      * Busca el siguiente firmante en estado "esperando" y lo activa.
      */
@@ -449,7 +734,7 @@ class FirmaDocPublic extends Controller
                 $siguiente->estado = FirmaDocFirmante::ESTADO_PENDIENTE;
                 $siguiente->save();
                 FirmaDocMailer::enviarSiguiente($siguiente, $this->firma);
-                Tools::log()->info('FirmaDoc: Enlace enviado al siguiente firmante: ' . $siguiente->email);
+                Tools::log()->info(Tools::lang()->trans('firmadoc-next-signer-notified', ['%email%' => $siguiente->email]));
             }
         }
     }
@@ -486,6 +771,11 @@ class FirmaDocPublic extends Controller
             $mail->title = Tools::lang()->trans('firmadoc-email-signed-subject', ['%code%' => $this->firma->codigo_doc]);
 
             // Cuerpo con bloques nativos de FacturaScripts
+            $logo = FirmaDocEmail::logo($this->cargarDocumento($this->firma->tipo_doc, (int) $this->firma->id_doc));
+            if ($logo !== null) {
+                $mail->addMainBlock($logo);
+            }
+
             $mail->addMainBlock(new TitleBlock(
                 Tools::lang()->trans('firmadoc-email-signed-title'),
                 'h2'
@@ -513,6 +803,14 @@ class FirmaDocPublic extends Controller
                 $filas
             ));
 
+            $enlaceFirmado = FirmaDocUrl::firma($this->firma->token);
+            if (!empty($enlaceFirmado)) {
+                $mail->addMainBlock(FirmaDocEmail::boton(
+                    $enlaceFirmado . '&action=ver_pdf',
+                    Tools::lang()->trans('firmadoc-email-view-signed')
+                ));
+            }
+
             $mail->send();
 
         } catch (\Exception $e) {
@@ -522,14 +820,6 @@ class FirmaDocPublic extends Controller
 
     private function cargarDocumento(string $tipo, int $id): ?object
     {
-        $clases = [
-            FirmaDoc::TIPO_FACTURA     => '\FacturaScripts\Core\Model\FacturaCliente',
-            FirmaDoc::TIPO_PRESUPUESTO => '\FacturaScripts\Core\Model\PresupuestoCliente',
-            FirmaDoc::TIPO_ALBARAN     => '\FacturaScripts\Core\Model\AlbaranCliente',
-            FirmaDoc::TIPO_PEDIDO      => '\FacturaScripts\Core\Model\PedidoCliente',
-        ];
-        if (!isset($clases[$tipo])) return null;
-        $modelo = new $clases[$tipo]();
-        return $modelo->loadFromCode($id) ? $modelo : null;
+        return FirmaDocDocumento::cargar($tipo, $id);
     }
 }

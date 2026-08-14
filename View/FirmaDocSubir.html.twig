@@ -1,0 +1,156 @@
+{#
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ *
+ * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
+ * @copyright 2025-2026 Francisco José Matías Olivares
+ * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
+ * @version   1.4
+ * @link      https://creativoz.com
+#}
+{% extends "Master/MenuTemplate.html.twig" %}
+
+{% block body %}
+{{ parent() }}
+<div class="container-fluid mt-4 mb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-9">
+
+      {% if fsc.mensaje %}
+      <div class="alert alert-{{ fsc.mensajeTipo }}">
+        {{ fsc.mensaje }}
+      </div>
+      {% endif %}
+
+      {# Resultado: enlace listo para copiar #}
+      {% if fsc.firmaCreada %}
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">
+            <i class="fas fa-check-circle text-success mr-2"></i>{{ fsc.firmaCreada.getTitulo() }}
+          </h5>
+          <label class="small text-muted mb-1">{{ trans('firmadoc-send-sign-link') }}</label>
+          <div class="input-group mb-2">
+            <input type="text" class="form-control" id="enlace-firma" readonly value="{{ fsc.linkFirma }}">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" type="button" onclick="copiarEnlace()">
+                <i class="fas fa-copy mr-1"></i>{{ trans('copy') }}
+              </button>
+            </div>
+          </div>
+          <p class="small text-muted mb-0">
+            {{ trans('firmadoc-verification-code') }}: <code>{{ fsc.firmaCreada.codigo_verificacion }}</code>
+          </p>
+        </div>
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="subir">
+
+        <div class="card shadow-sm mb-3">
+          <div class="card-header">
+            <i class="fas fa-file-pdf mr-2"></i>{{ trans('firmadoc-upload-document') }}
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group col-md-7">
+                <label for="documento">{{ trans('firmadoc-upload-file') }} <span class="text-danger">*</span></label>
+                <input type="file" name="documento" id="documento" accept="application/pdf"
+                       class="form-control-file" required>
+                <small class="form-text text-muted">{{ trans('firmadoc-upload-help') }}</small>
+              </div>
+              <div class="form-group col-md-5">
+                <label for="titulo">{{ trans('firmadoc-upload-doc-title') }}</label>
+                <input type="text" name="titulo" id="titulo" class="form-control" maxlength="200"
+                       placeholder="{{ trans('firmadoc-upload-title-placeholder') }}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-users mr-2"></i>{{ trans('firmadoc-signers') }}</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="anadirFirmante()">
+              <i class="fas fa-plus mr-1"></i>{{ trans('firmadoc-add-signer') }}
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="lista-firmantes"></div>
+
+            <div class="form-group mt-3 mb-0" id="grupo-modo" style="display:none;">
+              <label class="small">{{ trans('firmadoc-multisign-mode') }}</label>
+              <select name="modo_multifirma" class="form-control form-control-sm" style="max-width:280px;">
+                <option value="paralelo">{{ trans('firmadoc-mode-parallel') }}</option>
+                <option value="secuencial">{{ trans('firmadoc-mode-sequential') }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary px-4">
+          <i class="fas fa-paper-plane mr-2"></i>{{ trans('firmadoc-upload-send') }}
+        </button>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+var contadorFirmantes = 0;
+
+function anadirFirmante(nombre, email, telefono) {
+    var i = contadorFirmantes++;
+    var fila = document.createElement('div');
+    fila.className = 'form-row align-items-end mb-2 fila-firmante';
+    fila.innerHTML =
+        '<div class="form-group col-md-4 mb-1">' +
+          '<label class="small mb-1">{{ trans('firmadoc-signer-name') }}</label>' +
+          '<input type="text" class="form-control form-control-sm" name="firmantes[' + i + '][nombre]">' +
+        '</div>' +
+        '<div class="form-group col-md-4 mb-1">' +
+          '<label class="small mb-1">{{ trans('email') }} <span class="text-danger">*</span></label>' +
+          '<input type="email" class="form-control form-control-sm" name="firmantes[' + i + '][email]" required>' +
+        '</div>' +
+        '<div class="form-group col-md-3 mb-1">' +
+          '<label class="small mb-1">{{ trans('phone') }}</label>' +
+          '<input type="text" class="form-control form-control-sm" name="firmantes[' + i + '][telefono]">' +
+        '</div>' +
+        '<div class="form-group col-md-1 mb-1">' +
+          '<button type="button" class="btn btn-sm btn-outline-danger btn-block" onclick="quitarFirmante(this)">' +
+            '<i class="fas fa-times"></i>' +
+          '</button>' +
+        '</div>';
+    document.getElementById('lista-firmantes').appendChild(fila);
+
+    if (nombre) fila.querySelector('[name$="[nombre]"]').value = nombre;
+    if (email) fila.querySelector('[name$="[email]"]').value = email;
+    if (telefono) fila.querySelector('[name$="[telefono]"]').value = telefono;
+
+    actualizarModo();
+}
+
+function quitarFirmante(boton) {
+    var filas = document.querySelectorAll('.fila-firmante');
+    if (filas.length <= 1) return;   // siempre tiene que quedar uno
+    boton.closest('.fila-firmante').remove();
+    actualizarModo();
+}
+
+// El modo solo tiene sentido a partir del segundo firmante
+function actualizarModo() {
+    var n = document.querySelectorAll('.fila-firmante').length;
+    document.getElementById('grupo-modo').style.display = n > 1 ? 'block' : 'none';
+}
+
+function copiarEnlace() {
+    var campo = document.getElementById('enlace-firma');
+    campo.select();
+    campo.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+}
+
+anadirFirmante();
+</script>
+{% endblock %}

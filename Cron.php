@@ -13,7 +13,9 @@ namespace FacturaScripts\Plugins\FirmaDoc;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Lib\Email\NewMail;
 use FacturaScripts\Core\Lib\Email\TextBlock;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocEmail;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
 use FacturaScripts\Core\Template\CronClass;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
@@ -137,9 +139,12 @@ class Cron extends CronClass
             $expiracion    = \DateTime::createFromFormat('d-m-Y H:i:s', $firma->fecha_expiracion);
             $diasRestantes = $expiracion ? max(0, (int)(new \DateTime())->diff($expiracion)->days) : 0;
 
-            $scheme        = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-            $host          = $_SERVER['HTTP_HOST'] ?? Tools::config('webserver_host', 'localhost');
-            $linkFirma     = $scheme . '://' . $host . '/FirmaDocPublic?token=' . $firma->token;
+            // Por CLI no existe HTTP_HOST: la URL sale de la configuración del sitio
+            $linkFirma     = FirmaDocUrl::firma($firma->token);
+            if (empty($linkFirma)) {
+                Tools::log()->warning(Tools::lang()->trans('firmadoc-no-site-url'));
+                return false;
+            }
             $nombreEmpresa = FirmaDocMailer::getNombreEmpresaPublic();
 
             $datos = [
@@ -161,15 +166,13 @@ class Cron extends CronClass
 
             $mail->addAddress($firma->email_cliente);
             $mail->title = $asunto;
-            $mail->addMainBlock(new TextBlock($cuerpo));
-            $mail->addMainBlock(new TextBlock(
-                '<p style="margin-top:12px;font-size:0.9em;color:#555;">'
-                . Tools::lang()->trans('firmadoc-email-expires-in', ['%days%' => $diasRestantes, '%date%' => $firma->fecha_expiracion ?? ''])
-                . '</p>'
-                . '<a href="' . $linkFirma . '" style="background:#28a745;color:#fff;padding:10px 24px;'
-                . 'border-radius:4px;text-decoration:none;display:inline-block;margin-top:8px;font-weight:600;">'
-                . Tools::lang()->trans('firmadoc-email-sign-now-btn') . '</a>'
-            ));
+
+            $cuerpo .= "\n\n" . Tools::lang()->trans('firmadoc-email-expires-in', [
+                '%days%' => $diasRestantes,
+                '%date%' => $firma->fecha_expiracion ?? '',
+            ]);
+
+            FirmaDocEmail::montar($mail, $cuerpo, $linkFirma, Tools::lang()->trans('firmadoc-email-sign-now-btn'));
             return $mail->send();
 
         } catch (\Exception $e) {
@@ -246,9 +249,11 @@ class Cron extends CronClass
                 return false;
             }
 
-            $scheme        = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-            $host          = $_SERVER['HTTP_HOST'] ?? Tools::config('webserver_host', 'localhost');
-            $linkFirma     = $scheme . '://' . $host . '/FirmaDocPublic?token=' . $firmante->token;
+            $linkFirma     = FirmaDocUrl::firma($firmante->token);
+            if (empty($linkFirma)) {
+                Tools::log()->warning(Tools::lang()->trans('firmadoc-no-site-url'));
+                return false;
+            }
             $nombreEmpresa = FirmaDocMailer::getNombreEmpresaPublic();
 
             $datos = [
@@ -269,15 +274,12 @@ class Cron extends CronClass
 
             $mail->addAddress($firmante->email);
             $mail->title = $asunto;
-            $mail->addMainBlock(new TextBlock($cuerpo));
-            $mail->addMainBlock(new TextBlock(
-                '<p style="margin-top:12px;font-size:0.9em;color:#555;">'
-                . Tools::lang()->trans('firmadoc-email-expires-in-short', ['%days%' => $diasRestantes])
-                . '</p>'
-                . '<a href="' . $linkFirma . '" style="background:#28a745;color:#fff;padding:10px 24px;'
-                . 'border-radius:4px;text-decoration:none;display:inline-block;margin-top:8px;font-weight:600;">'
-                . Tools::lang()->trans('firmadoc-email-sign-now-btn') . '</a>'
-            ));
+
+            $cuerpo .= "\n\n" . Tools::lang()->trans('firmadoc-email-expires-in-short', [
+                '%days%' => $diasRestantes,
+            ]);
+
+            FirmaDocEmail::montar($mail, $cuerpo, $linkFirma, Tools::lang()->trans('firmadoc-email-sign-now-btn'));
             return $mail->send();
         } catch (\Exception $e) {
             Tools::log()->error(Tools::lang()->trans('firmadoc-cron-signer-reminder-error', ['%error%' => $e->getMessage()]));

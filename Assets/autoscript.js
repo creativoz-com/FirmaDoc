@@ -1,3 +1,17 @@
+/*
+ * AutoScript v1.9.0 - cliente JavaScript del proyecto @firma
+ *
+ * Copyright (C) Gobierno de Espana
+ * Secretaria General de Administracion Digital
+ *
+ * Este fichero NO forma parte del codigo propietario del plugin FirmaDoc.
+ * Se distribuye sin modificaciones bajo licencia dual, a eleccion del usuario:
+ *   - GNU General Public License v2 o posterior
+ *   - European Union Public Licence v1.1
+ *
+ * Codigo fuente original y texto completo de las licencias:
+ *   https://github.com/ctt-gob-es/clienteafirma
+ */
 
 if (document.all && !window.setTimeout.isPolyfill) {
 	var __nativeST__ = window.setTimeout;

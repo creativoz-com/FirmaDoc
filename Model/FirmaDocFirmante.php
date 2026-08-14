@@ -106,6 +106,18 @@ class FirmaDocFirmante extends ModelClass
     /** @var string|null Fecha en que el firmante abrió el enlace por primera vez */
     public $fecha_primera_apertura;
 
+    /** @var string|null Código de un solo uso enviado a este firmante */
+    public $otp_codigo;
+
+    /** @var string|null Caducidad del código */
+    public $otp_expira;
+
+    /** @var int Intentos fallidos */
+    public $otp_intentos;
+
+    /** @var bool Si este firmante ya superó la verificación en dos pasos */
+    public $otp_verificado;
+
     public static function tableName(): string
     {
         return 'firmadoc_firmante';

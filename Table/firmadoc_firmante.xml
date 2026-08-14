@@ -108,7 +108,7 @@
     </column>
     <column>
         <name>doc_hash</name>
-        <type>character varying(32)</type>
+        <type>character varying(64)</type>
         <null>YES</null>
     </column>
     <column>
@@ -142,6 +142,28 @@
         <name>fecha_primera_apertura</name>
         <type>character varying(20)</type>
         <null>YES</null>
+    </column>
+    <column>
+        <name>otp_codigo</name>
+        <type>character varying(255)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>otp_expira</name>
+        <type>timestamp</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>otp_intentos</name>
+        <type>integer</type>
+        <null>NO</null>
+        <default>0</default>
+    </column>
+    <column>
+        <name>otp_verificado</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>FALSE</default>
     </column>
         <constraint>
         <name>firmadoc_firmante_pkey</name>

@@ -45,6 +45,10 @@ class FirmaDocConfig extends Controller
             $config->cargo_modo       = $req->get('cargo_modo', 'opcional');
             $config->dias_validez     = (int) $req->get('dias_validez', 15);
             $config->recordatorios_activo = (bool) $req->get('recordatorios_activo', false);
+            $config->otp_activo       = (bool) $req->get('otp_activo', false);
+            $config->otp_minutos      = (int) $req->get('otp_minutos', 10);
+            $config->sello_activo     = (bool) $req->get('sello_activo', false);
+            $config->sello_url        = $req->get('sello_url', null) ?: null;
 
             // Tipos de documento activos
             $config->doc_presupuesto = (bool) $req->get('doc_presupuesto', false);
@@ -66,7 +70,23 @@ class FirmaDocConfig extends Controller
             $config->whatsapp_mensaje = $req->get('whatsapp_mensaje', '');
             $config->confirm_asunto   = $req->get('confirm_asunto', '') ?: null;
             $config->confirm_cuerpo   = $req->get('confirm_cuerpo', '') ?: null;
-            $mensajeGuardado = $config->save() ? 'ok' : 'error';
+            // No basta con que save() diga que sí: se relee de la base de datos y se
+            // compara. Un «configuración guardada» que no se corresponde con lo que hay
+            // almacenado es peor que un error, porque el usuario se va convencido.
+            $mensajeGuardado = 'error';
+            if ($config->save()) {
+                ConfigModel::limpiarCache();
+                $comprobacion = new ConfigModel();
+                if ($comprobacion->loadFromCode($config->id)
+                    && $comprobacion->email_cuerpo === $config->email_cuerpo
+                    && $comprobacion->email_asunto === $config->email_asunto
+                    && $comprobacion->whatsapp_mensaje === $config->whatsapp_mensaje
+                    && $comprobacion->confirm_cuerpo === $config->confirm_cuerpo) {
+                    $mensajeGuardado = 'ok';
+                } else {
+                    Tools::log()->error(Tools::lang()->trans('firmadoc-config-not-persisted'));
+                }
+            }
         }
 
         $this->setTemplate('FirmaDocConfig');

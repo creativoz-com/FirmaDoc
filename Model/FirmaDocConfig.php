@@ -11,6 +11,7 @@
 namespace FacturaScripts\Plugins\FirmaDoc\Model;
 
 use FacturaScripts\Core\Template\ModelClass;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Core\Template\ModelTrait;
 
 class FirmaDocConfig extends ModelClass
@@ -100,6 +101,19 @@ class FirmaDocConfig extends ModelClass
     /** @var bool FirmaDoc activo para Pedidos de cliente */
     public $doc_pedido;
 
+    // ── Verificación en dos pasos y sello de tiempo ────────────────────────
+    /** @var bool Exigir código de un solo uso antes de firmar */
+    public $otp_activo;
+
+    /** @var int Minutos de validez del código */
+    public $otp_minutos;
+
+    /** @var bool Sellar la firma con una autoridad de tiempo (RFC 3161) */
+    public $sello_activo;
+
+    /** @var string|null URL de la TSA; vacío usa la pública por defecto */
+    public $sello_url;
+
     public static function tableName(): string
     {
         return 'firmadoc_config';
@@ -124,10 +138,12 @@ class FirmaDocConfig extends ModelClass
         $this->cargo_modo       = self::CAMPO_OPCIONAL;
         $this->notif_empresa    = true;
         $this->mostrar_logo     = true;
-        $this->email_asunto     = 'Pendiente firmar {{tipo_doc}}: {{codigo_doc}} de {{empresa}}';
+        // Las plantillas por defecto salen del fichero de idioma: antes estaban en
+        // español fijo y una instalación en inglés recibía correos en español.
+        $this->email_asunto     = Tools::lang()->trans('firmadoc-default-email-subject');
         $this->email_cuerpo     = $this->getEmailPorDefecto();
         $this->whatsapp_mensaje = $this->getWhatsAppPorDefecto();
-        $this->confirm_asunto   = '{{empresa}} Documento firmado';
+        $this->confirm_asunto   = Tools::lang()->trans('firmadoc-default-confirm-subject');
         $this->confirm_cuerpo   = $this->getConfirmPorDefecto();
 
         // Tipos de documento — todos activos por defecto
@@ -135,34 +151,85 @@ class FirmaDocConfig extends ModelClass
         $this->doc_albaran     = true;
         $this->doc_factura     = true;
         $this->doc_pedido      = false;
+
+        // Ambas desactivadas por defecto: añaden pasos al firmante y una dependencia
+        // externa, así que es el usuario quien decide activarlas.
+        $this->otp_activo   = false;
+        $this->otp_minutos  = 10;
+        $this->sello_activo = false;
+    }
+
+    /** @var self|null Config ya cargada en esta petición */
+    private static $cache = null;
+
+    /**
+     * Devuelve true si FirmaDoc debe actuar sobre este tipo de documento.
+     * Se consulta desde las extensiones, no desde Init::init(), para no
+     * tocar la base de datos en el arranque de cada petición del ERP.
+     */
+    public static function estaActivo(string $tipoDoc): bool
+    {
+        $campo = 'doc_' . $tipoDoc;
+        $config = self::getConfig();
+        return property_exists($config, $campo) ? (bool)$config->$campo : false;
     }
 
     /**
      * Devuelve la configuración activa (siempre hay una sola fila)
-     * Si no existe, la crea con valores por defecto
+     * Si no existe, la crea con valores por defecto.
+     * El resultado se cachea durante la petición: esto se llama desde varios
+     * puntos y antes provocaba un SELECT —y a veces un INSERT o UPDATE— en cada uno.
      */
     public static function getConfig(): self
     {
+        if (self::$cache !== null) {
+            return self::$cache;
+        }
+
         $config = new self();
         $lista  = $config->all([], [], 0, 1);
 
         if (empty($lista)) {
             $config->clear();
             $config->save();
+            self::$cache = $config;
             return $config;
         }
 
         $cfg = $lista[0];
         // Sanear textos que pudieron guardarse con escapes Unicode tipo \u00fa (PHP no los interpreta)
+        $saneado = false;
         foreach (['email_asunto', 'email_cuerpo', 'whatsapp_mensaje'] as $campo) {
             if (!empty($cfg->$campo) && strpos($cfg->$campo, '\u') !== false) {
                 $cfg->$campo = preg_replace_callback('/\\\\u([0-9a-fA-F]{4})/', function($m) {
                     return mb_convert_encoding(pack('H*', $m[1]), 'UTF-8', 'UCS-2BE');
                 }, $cfg->$campo);
-                $cfg->save();
+                $saneado = true;
             }
         }
+        if ($saneado) {
+            $cfg->save();
+        }
+
+        self::$cache = $cfg;
         return $cfg;
+    }
+
+    /**
+     * Invalida la caché de petición. Llamar tras guardar cambios de configuración.
+     */
+    public static function limpiarCache(): void
+    {
+        self::$cache = null;
+    }
+
+    public function save(): bool
+    {
+        $guardado = parent::save();
+        if ($guardado) {
+            self::limpiarCache();
+        }
+        return $guardado;
     }
 
     /**
@@ -233,11 +300,15 @@ class FirmaDocConfig extends ModelClass
     public function test(): bool
     {
         if (!$this->modo_manuscrita && !$this->modo_tipografica && !$this->modo_certificado) {
-            \FacturaScripts\Core\Tools::log()->error('FirmaDoc: debe haber al menos un modo de firma activo.');
+            \FacturaScripts\Core\Tools::log()->error(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-config-need-one-mode'));
+            return false;
+        }
+        if ($this->otp_activo && ($this->otp_minutos < 1 || $this->otp_minutos > 120)) {
+            \FacturaScripts\Core\Tools::log()->error(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-config-otp-range'));
             return false;
         }
         if ($this->dias_validez < 1 || $this->dias_validez > 365) {
-            \FacturaScripts\Core\Tools::log()->error('FirmaDoc: los días de validez deben estar entre 1 y 365.');
+            \FacturaScripts\Core\Tools::log()->error(\FacturaScripts\Core\Tools::lang()->trans('firmadoc-config-days-range'));
             return false;
         }
         return parent::test();
@@ -245,29 +316,16 @@ class FirmaDocConfig extends ModelClass
 
     private function getEmailPorDefecto(): string
     {
-        return 'Hola {{cliente}},' . "\n\n"
-            . 'Te enviamos el documento {{tipo_doc}} Núm. {{codigo_doc}} para que lo revises y firmes.' . "\n\n"
-            . 'Accede desde el siguiente enlace:' . "\n"
-            . '{{link_firma}}' . "\n\n"
-            . 'El enlace estará disponible hasta el {{fecha_expiracion}}.' . "\n\n"
-            . 'Un saludo,' . "\n"
-            . '{{empresa}}';
+        return Tools::lang()->trans('firmadoc-default-email-body');
     }
 
     public function getConfirmPorDefecto(): string
     {
-        return 'Hola {{cliente}},' . "\n\n"
-            . 'Puede acceder al documento firmado pulsando en el siguiente enlace:' . "\n"
-            . '{{link_documento}}' . "\n\n"
-            . 'Saludos cordiales.';
+        return Tools::lang()->trans('firmadoc-default-confirm-body');
     }
 
     private function getWhatsAppPorDefecto(): string
     {
-        return 'Hola {{cliente}},' . "\n\n"
-            . 'Te enviamos el {{tipo_doc}} Núm. {{codigo_doc}} de {{empresa}} para que lo revises y firmes.' . "\n\n"
-            . 'Accede aqui: {{link_firma}}' . "\n\n"
-            . 'El enlace caduca el {{fecha_expiracion}}.' . "\n\n"
-            . 'Gracias.';
+        return Tools::lang()->trans('firmadoc-default-whatsapp');
     }
 }

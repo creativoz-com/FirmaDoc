@@ -1,0 +1,176 @@
+Acuerdo de Licencia de Usuario Final
+Francisco José Matías Olivares
+
+ACUERDO DE LICENCIA DE USUARIO FINAL (EULA) PARA EL PLUGIN FirmaDoc.
+
+IMPORTANTE, LEA DETENIDAMENTE LOS TÉRMINOS Y CONDICIONES DE ESTE ACUERDO DE LICENCIA.
+Este Acuerdo de Licencia de Usuario Final («EULA») es un acuerdo legal entre usted
+(ya sea una persona física o una entidad jurídica) y Francisco José Matías Olivares
+(«Francisco José Matías Olivares», «nosotros», «nos») para este producto de software,
+que puede incluir componentes de software asociados, medios, materiales impresos y
+documentación en línea o electrónica (denominados conjuntamente PRODUCTO DE SOFTWARE o
+SOFTWARE). Este acuerdo de licencia representa el acuerdo completo sobre el programa
+entre usted y Francisco José Matías Olivares («Licenciante»), y reemplaza cualquier
+propuesta, representación o entendimiento anterior entre las partes. Si no está de
+acuerdo con los términos de este EULA, no instale ni utilice el PRODUCTO DE SOFTWARE.
+
+El PRODUCTO DE SOFTWARE está protegido por las leyes de derechos de autor y los
+tratados internacionales de propiedad intelectual, así como por otras leyes y tratados
+de propiedad intelectual. El PRODUCTO DE SOFTWARE se licencia, no se vende.
+
+
+1. CONCESIÓN DE LICENCIA
+
+   El PRODUCTO DE SOFTWARE, el plugin FirmaDoc, se licencia bajo las siguientes
+   condiciones:
+
+   a. Instalación y uso.
+
+      Francisco José Matías Olivares le concede el derecho a instalar y utilizar copias
+      del PRODUCTO DE SOFTWARE en UNA instalación de FacturaScripts, el software para el
+      que se ha diseñado el PRODUCTO DE SOFTWARE. El software se considera en uso en una
+      instalación cuando el plugin está activado.
+
+      Adicionalmente, Francisco José Matías Olivares le concede el derecho a instalar el
+      PRODUCTO DE SOFTWARE en un entorno de pruebas, con el propósito de que pueda
+      evaluar las funcionalidades del PRODUCTO DE SOFTWARE antes de su uso en producción.
+
+
+2. DESCRIPCIÓN DE OTROS DERECHOS Y LIMITACIONES
+
+   a. Mantenimiento de los avisos de derechos de autor.
+
+      No deberá eliminar ni alterar ningún aviso de derechos de autor en ninguna de las
+      copias del PRODUCTO DE SOFTWARE.
+
+   b. Modificación o adaptación.
+
+      Puede modificar el código de este plugin para su propio uso en las instalaciones
+      que se permiten en el punto 1. Dichas modificaciones no podrán ser redistribuidas.
+
+   c. Distribución.
+
+      No puede distribuir copias del PRODUCTO DE SOFTWARE a terceros. Las versiones de
+      evaluación disponibles para descarga desde los sitios web de
+      Francisco José Matías Olivares pueden distribuirse libremente únicamente con fines
+      de evaluación.
+
+   d. Prohibición de ingeniería inversa, descompilación y desensamblaje.
+
+      No puede aplicar ingeniería inversa, descompilar, traducir ni desensamblar el
+      PRODUCTO DE SOFTWARE. Asimismo, no intentará eludir el proceso de registro o
+      licencia del PRODUCTO DE SOFTWARE. Si es una empresa, impedirá que sus empleados
+      y contratistas intenten aplicar ingeniería inversa, descompilar, traducir o
+      desensamblar el SOFTWARE.
+
+   e. Arrendamiento.
+
+      No puede alquilar, arrendar, prestar ni vender el PRODUCTO DE SOFTWARE.
+
+   f. Servicios de soporte.
+
+      Francisco José Matías Olivares puede prestar servicios de soporte relacionados con
+      el PRODUCTO DE SOFTWARE («Servicios de Soporte»). Cualquier código de software
+      complementario proporcionado como parte de los Servicios de Soporte se considerará
+      parte del PRODUCTO DE SOFTWARE y estará sujeto a los términos y condiciones de
+      este EULA.
+
+
+3. TERMINACIÓN
+
+   Sin perjuicio de otros derechos, Francisco José Matías Olivares podrá resolver este
+   EULA si usted incumple los términos y condiciones del mismo. En tal caso, deberá
+   destruir todas las copias del PRODUCTO DE SOFTWARE en su poder.
+
+
+4. DERECHOS DE AUTOR Y PROPIEDAD
+
+   El SOFTWARE se licencia, no se vende. El PRODUCTO DE SOFTWARE es propiedad de
+   Francisco José Matías Olivares y esta licencia no transfiere ningún derecho de
+   propiedad del SOFTWARE a usted. Todos los títulos, incluidos, entre otros, los
+   derechos de autor sobre el PRODUCTO DE SOFTWARE y cualquier copia del mismo, son
+   propiedad de Francisco José Matías Olivares. Todos los títulos y derechos de
+   propiedad intelectual sobre el contenido al que se puede acceder mediante el uso del
+   PRODUCTO DE SOFTWARE son propiedad de sus respectivos titulares y pueden estar
+   protegidos por las leyes y tratados de derechos de autor o de propiedad intelectual
+   aplicables. Este EULA no le otorga ningún derecho de uso sobre dicho contenido.
+   Todos los derechos no expresamente concedidos quedan reservados por
+   Francisco José Matías Olivares.
+
+
+5. POLÍTICA DE REEMBOLSO
+
+   El SOFTWARE está disponible para su evaluación previa a la compra. Se recomienda
+   probarlo antes de adquirir una licencia. No se contemplan reembolsos una vez
+   efectuada la compra.
+
+
+6. AUSENCIA DE GARANTÍA
+
+   Francisco José Matías Olivares renuncia expresamente a cualquier garantía sobre el
+   PRODUCTO DE SOFTWARE. El PRODUCTO DE SOFTWARE se proporciona «tal cual» sin ninguna
+   garantía expresa o implícita de ningún tipo, incluidas, entre otras, las garantías de
+   comerciabilidad, no infracción o idoneidad para un fin particular.
+   Francisco José Matías Olivares no garantiza ni asume responsabilidad por la exactitud
+   o integridad de cualquier información, texto, gráfico, enlace u otro elemento
+   contenido en el PRODUCTO DE SOFTWARE. Francisco José Matías Olivares no ofrece
+   garantías respecto a los daños que puedan ser causados por la transmisión de un virus
+   informático, gusano, bomba de tiempo, bomba lógica u otro programa informático de
+   naturaleza similar. Francisco José Matías Olivares renuncia expresamente a cualquier
+   garantía o declaración frente a los Usuarios Autorizados o terceros.
+
+
+7. RECONOCIMIENTO DE TERCEROS
+
+   Francisco José Matías Olivares utiliza adicionalmente software de código abierto con
+   licencias propias. Una copia de dichas licencias acompaña a los archivos del PRODUCTO
+   DE SOFTWARE. Para más información, consulte los sitios web oficiales de los
+   respectivos proyectos.
+
+   Este plugin hace uso de las siguientes tecnologías y bibliotecas de terceros:
+   - FacturaScripts (https://facturascripts.com) — licencia MIT
+   - AutoFirma, desarrollado por el Ministerio de Asuntos Económicos y Transformación
+     Digital del Gobierno de España (https://firmaelectronica.gob.es/Home/Descargas.html)
+   - TCPDF / Cezpdf, incluidos en FacturaScripts
+
+
+8. LIMITACIÓN DE RESPONSABILIDAD
+
+   En ningún caso Francisco José Matías Olivares será responsable de ningún daño
+   (incluidos, sin limitación, la pérdida de beneficios, la interrupción del negocio o
+   la pérdida de información) que surja del uso o la imposibilidad de uso del PRODUCTO
+   DE SOFTWARE por parte de los Usuarios Autorizados, incluso si
+   Francisco José Matías Olivares ha sido informado de la posibilidad de tales daños.
+   En ningún caso Francisco José Matías Olivares será responsable de la pérdida de
+   datos ni de daños indirectos, especiales, incidentales, consecuentes (incluida la
+   pérdida de beneficios) u otros daños basados en contrato, agravio o de otro tipo.
+   Francisco José Matías Olivares no tendrá ninguna responsabilidad respecto al
+   contenido del PRODUCTO DE SOFTWARE o parte del mismo, incluyendo pero no limitado a
+   errores u omisiones contenidos en él, difamación, infracciones de derechos
+   publicitarios, privacidad, marcas registradas, interrupción del negocio, daños
+   personales, pérdida de privacidad, derechos morales o divulgación de información
+   confidencial.
+
+
+© 2025-2026 Francisco José Matías Olivares. Todos los derechos reservados.
+
+
+================================================================================
+COMPONENTES DE TERCEROS
+================================================================================
+
+Este paquete incluye el fichero Assets/autoscript.js, que NO es obra del
+licenciante y NO queda cubierto por el acuerdo anterior.
+
+  Componente : AutoScript v1.9.0 (cliente JavaScript del proyecto @firma)
+  Titular    : Gobierno de España — Secretaría General de Administración Digital
+  Licencia   : GPL v2 o posterior / EUPL v1.1 (licencia dual, a elección del usuario)
+  Origen     : https://github.com/ctt-gob-es/clienteafirma
+
+Se distribuye sin modificaciones. Sus términos de licencia prevalecen sobre los
+de este EULA para ese fichero, incluido el derecho a obtener, usar, modificar y
+redistribuir su código fuente en los términos de la GPL o la EUPL.
+
+El texto completo de ambas licencias está disponible en:
+  GPL v2  : https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+  EUPL 1.1: https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-11
