@@ -102,6 +102,10 @@
     </columns>
     <rows>
         <row type="actions">
+            <button type="action" action="firmadoc-descargar" color="success"
+                    icon="fas fa-file-download" label="firmadoc-download-signed"/>
+            <button type="action" action="firmadoc-enviar-firmado" color="primary"
+                    icon="fas fa-envelope" label="firmadoc-email-signed"/>
             <button type="action" action="firmadoc-reenviar" color="info"
                     icon="fas fa-paper-plane" label="firmadoc-resend-email"/>
             <button type="action" action="firmadoc-cancelar" color="warning"

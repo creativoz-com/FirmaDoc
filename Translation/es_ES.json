@@ -406,5 +406,14 @@
     "firmadoc-send-email-sent": "Email de firma enviado a %email%.",
     "firmadoc-send-email-error": "No se pudo enviar el email. Revisa la configuración de correo de FacturaScripts.",
     "firmadoc-sign-date": "Fecha de firma",
-    "firmadoc-send-expires": "Caduca"
+    "firmadoc-send-expires": "Caduca",
+    "firmadoc-send-cancel-request": "Cancelar solicitud",
+    "firmadoc-download-signed": "Descargar firmado",
+    "firmadoc-email-signed": "Enviar por email",
+    "firmadoc-only-when-signed": "Esta acción solo está disponible cuando el documento ya está firmado.",
+    "firmadoc-no-recipient": "No hay ninguna dirección de correo a la que enviarlo.",
+    "firmadoc-signed-email-subject": "Documento firmado: %doc%",
+    "firmadoc-signed-email-body": "Le adjuntamos el documento %doc% ya firmado, junto con su certificado de firma.\n\nPuede comprobar su autenticidad en cualquier momento con el enlace de verificación.\n\nSaludos cordiales.",
+    "firmadoc-estado": "Firma",
+    "firmadoc-signature-data": "Datos de la firma"
 }

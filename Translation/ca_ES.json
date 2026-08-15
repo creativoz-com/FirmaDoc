@@ -406,5 +406,14 @@
     "firmadoc-send-email-sent": "S'ha enviat l'email de signatura a %email%.",
     "firmadoc-send-email-error": "No s'ha pogut enviar l'email. Revisa la configuració de correu de FacturaScripts.",
     "firmadoc-sign-date": "Data de signatura",
-    "firmadoc-send-expires": "Caduca"
+    "firmadoc-send-expires": "Caduca",
+    "firmadoc-send-cancel-request": "Cancel·lar sol·licitud",
+    "firmadoc-download-signed": "Descarregar signat",
+    "firmadoc-email-signed": "Enviar per email",
+    "firmadoc-only-when-signed": "Aquesta acció només està disponible quan el document ja està signat.",
+    "firmadoc-no-recipient": "No hi ha cap adreça de correu on enviar-ho.",
+    "firmadoc-signed-email-subject": "Document signat: %doc%",
+    "firmadoc-signed-email-body": "T'adjuntem el document %doc% ja signat, juntament amb el seu certificat de signatura.\n\nEn pots comprovar l'autenticitat en qualsevol moment amb l'enllaç de verificació.\n\nSalutacions cordials.",
+    "firmadoc-estado": "Signatura",
+    "firmadoc-signature-data": "Dades de la signatura"
 }
