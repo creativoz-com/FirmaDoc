@@ -22,7 +22,7 @@ class FirmaDocConfig extends Controller
     public function getPageData(): array
     {
         $data = parent::getPageData();
-        $data['menu'] = 'admin';
+        $data['menu'] = 'firmadoc';
         $data['title'] = Tools::lang()->trans('firmadoc-admin-title');
         $data['icon'] = 'fas fa-signature';
         return $data;

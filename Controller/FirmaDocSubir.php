@@ -49,10 +49,16 @@ class FirmaDocSubir extends Controller
     /** @var string[] Direcciones a las que se envió */
     public $enviadoA = [];
 
+    /** @var array Clientes para el selector */
+    public $clientes = [];
+
+    /** @var array Proveedores para el selector */
+    public $proveedores = [];
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
-        $data['menu'] = 'ventas';
+        $data['menu'] = 'firmadoc';
         $data['title'] = Tools::lang()->trans('firmadoc-upload-title');
         $data['icon'] = 'fas fa-file-signature';
         return $data;
@@ -67,6 +73,11 @@ class FirmaDocSubir extends Controller
         if ($this->request->request->get('action', '') === 'subir') {
             $this->actionSubir();
         }
+
+        $this->clientes = (new \FacturaScripts\Core\Model\Cliente())
+            ->all([], ['nombre' => 'ASC'], 0, 0);
+        $this->proveedores = (new \FacturaScripts\Core\Model\Proveedor())
+            ->all([], ['nombre' => 'ASC'], 0, 0);
 
         $this->setTemplate('FirmaDocSubir');
     }
@@ -136,6 +147,11 @@ class FirmaDocSubir extends Controller
         $firma->fecha_expiracion = date('d-m-Y H:i:s', strtotime('+' . (int) $this->config->dias_validez . ' days'));
         $firma->estado = FirmaDoc::ESTADO_PENDIENTE;
         $firma->modo_multifirma = $modoMulti;
+        // Cliente o proveedor, si se han indicado: es lo que permite luego encontrar
+        // el documento desde su ficha y filtrar el listado general.
+        $firma->codcliente = $this->request->request->get('codcliente', null) ?: null;
+        $firma->codproveedor = $this->request->request->get('codproveedor', null) ?: null;
+        $firma->nick = $this->user->nick ?? null;
         // La huella es la del PDF entero, byte a byte
         $firma->doc_hash = FirmaDoc::calcularHashFichero(FS_FOLDER . '/' . $adjunto->path);
         $firma->generarToken();

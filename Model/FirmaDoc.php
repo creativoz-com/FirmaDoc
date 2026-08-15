@@ -134,6 +134,15 @@ class FirmaDoc extends ModelClass
     /** @var string|null Título del documento externo, para identificarlo */
     public $titulo;
 
+    /** @var string|null Cliente al que se envió, si lo hay */
+    public $codcliente;
+
+    /** @var string|null Proveedor al que se envió, si lo hay */
+    public $codproveedor;
+
+    /** @var string|null Usuario que creó la solicitud */
+    public $nick;
+
     /** @var string|null Código público de verificación, propio y único */
     public $codigo_verificacion;
 
@@ -369,6 +378,31 @@ class FirmaDoc extends ModelClass
             (string) $this->doc_hash,
             self::calcularHashDoc($documento, $algoritmo)
         );
+    }
+
+    public function url(string $type = 'auto', string $list = 'ListFirmaDoc'): string
+    {
+        return parent::url($type, $list);
+    }
+
+    /**
+     * Nombre del destinatario para listados: cliente, proveedor o la dirección suelta.
+     */
+    public function getDestinatario(): string
+    {
+        if (!empty($this->codcliente)) {
+            $cliente = new \FacturaScripts\Core\Model\Cliente();
+            if ($cliente->loadFromCode($this->codcliente)) {
+                return $cliente->nombre;
+            }
+        }
+        if (!empty($this->codproveedor)) {
+            $proveedor = new \FacturaScripts\Core\Model\Proveedor();
+            if ($proveedor->loadFromCode($this->codproveedor)) {
+                return $proveedor->nombre;
+            }
+        }
+        return (string) ($this->email_cliente ?? '');
     }
 
     /**

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ * @copyright 2025-2026 Francisco José Matías Olivares
+-->
+<view>
+    <columns>
+        <column name="date" display="left" order="100">
+            <widget type="datetime" fieldname="fecha"/>
+        </column>
+        <column name="firmadoc-doc-type" display="center" order="110">
+            <widget type="text" fieldname="tipo"/>
+        </column>
+        <column name="channel" display="center" order="120">
+            <widget type="text" fieldname="canal"/>
+        </column>
+        <column name="email" display="left" order="130">
+            <widget type="text" fieldname="email_destino"/>
+        </column>
+        <column name="firmadoc-signer-name" display="left" order="140">
+            <widget type="text" fieldname="nombre_destino"/>
+        </column>
+        <column name="user" display="left" order="150">
+            <widget type="text" fieldname="nick"/>
+        </column>
+    </columns>
+</view>

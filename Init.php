@@ -54,6 +54,14 @@ class Init extends InitClass
             ],
         ];
 
+        // Pestaña de documentos firmados en la ficha de cliente y de proveedor
+        foreach (['EditCliente', 'EditProveedor'] as $ficha) {
+            $clase = '\\FacturaScripts\\Dinamic\\Controller\\' . $ficha;
+            if (class_exists($clase)) {
+                $clase::addExtension(new Mod\FirmaDocClienteExtension());
+            }
+        }
+
         foreach ($mapaTab as $clases) {
             // Tab de firma en ficha del documento
             if (class_exists($clases['edit'])) {

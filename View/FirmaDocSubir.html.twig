@@ -65,6 +65,28 @@
                        placeholder="{{ trans('firmadoc-upload-title-placeholder') }}">
               </div>
             </div>
+            {# Asociar con cliente o proveedor: es lo que permite luego encontrar el
+               documento desde su ficha y filtrar el listado general. #}
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="codcliente">{{ trans('customer') }}</label>
+                <select name="codcliente" id="codcliente" class="form-control">
+                  <option value="">{{ trans('none') }}</option>
+                  {% for c in fsc.clientes %}
+                  <option value="{{ c.codcliente }}">{{ c.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group col-md-6">
+                <label for="codproveedor">{{ trans('supplier') }}</label>
+                <select name="codproveedor" id="codproveedor" class="form-control">
+                  <option value="">{{ trans('none') }}</option>
+                  {% for p in fsc.proveedores %}
+                  <option value="{{ p.codproveedor }}">{{ p.nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 

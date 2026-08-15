@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ * @copyright 2025-2026 Francisco José Matías Olivares
+-->
+<view>
+    <columns>
+        <column name="date" display="left" order="100">
+            <widget type="datetime" fieldname="fecha_envio" onclick="EditFirmaDoc"/>
+        </column>
+        <column name="firmadoc-doc-type" display="left" order="110">
+            <widget type="text" fieldname="tipo_doc"/>
+        </column>
+        <column name="firmadoc-verify-document" display="left" order="120">
+            <widget type="text" fieldname="titulo" onclick="EditFirmaDoc"/>
+        </column>
+        <column name="code" display="left" order="130">
+            <widget type="text" fieldname="codigo_doc" onclick="EditFirmaDoc"/>
+        </column>
+        <column name="status" display="center" order="140">
+            <widget type="text" fieldname="estado">
+                <option color="warning" font="bold">pendiente</option>
+                <option color="success" font="bold">firmado</option>
+                <option color="secondary">expirado</option>
+                <option color="danger">cancelado</option>
+                <option color="dark">anulado_mod</option>
+            </widget>
+        </column>
+        <column name="firmadoc-sign-date" display="center" order="150">
+            <widget type="datetime" fieldname="fecha_firma"/>
+        </column>
+        <column name="firmadoc-pdf-full-name" display="left" order="160">
+            <widget type="text" fieldname="firma_nombre"/>
+        </column>
+    </columns>
+</view>

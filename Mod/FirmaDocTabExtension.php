@@ -336,6 +336,10 @@ class FirmaDocTabExtension
             $firma->estado           = FirmaDoc::ESTADO_PENDIENTE;
             $firma->doc_hash         = FirmaDoc::calcularHashDoc($mainModel);
             $firma->modo_multifirma  = $modoMulti;
+            // Se guarda el cliente y el usuario: sin esto el listado general no puede
+            // filtrar por cliente ni decir quién mandó cada solicitud.
+            $firma->codcliente       = $mainModel->codcliente ?? null;
+            $firma->nick             = $this->user->nick ?? null;
             $firma->generarToken();
 
             if (!$firma->save()) {
