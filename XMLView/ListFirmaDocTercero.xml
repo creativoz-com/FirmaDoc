@@ -6,16 +6,16 @@
 <view>
     <columns>
         <column name="date" display="left" order="100">
-            <widget type="datetime" fieldname="fecha_envio" onclick="EditFirmaDoc"/>
+            <widget type="datetime" fieldname="fecha_envio" onclick="EditFirmaDoc" fieldclick="id"/>
         </column>
         <column name="firmadoc-doc-type" display="left" order="110">
             <widget type="text" fieldname="tipo_doc"/>
         </column>
         <column name="firmadoc-verify-document" display="left" order="120">
-            <widget type="text" fieldname="titulo" onclick="EditFirmaDoc"/>
+            <widget type="text" fieldname="titulo" onclick="EditFirmaDoc" fieldclick="id"/>
         </column>
         <column name="code" display="left" order="130">
-            <widget type="text" fieldname="codigo_doc" onclick="EditFirmaDoc"/>
+            <widget type="text" fieldname="codigo_doc" onclick="EditFirmaDoc" fieldclick="id"/>
         </column>
         <column name="status" display="center" order="140">
             <widget type="text" fieldname="estado">

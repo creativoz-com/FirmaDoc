@@ -75,7 +75,8 @@
                 <input type="search" id="buscar-cliente" class="form-control form-control-sm mb-1"
                        placeholder="{{ trans('search') }}..." autocomplete="off"
                        oninput="filtrarLista('codcliente', this.value)">
-                <select name="codcliente" id="codcliente" class="form-control" size="1">
+                <select name="codcliente" id="codcliente" class="form-control" size="1"
+                        onchange="elegirDeLista(this, 'buscar-cliente')">
                   <option value="">{{ trans('none') }}</option>
                   {% for c in fsc.clientes %}
                   <option value="{{ c.codcliente }}">{{ c.nombre }}</option>
@@ -87,7 +88,8 @@
                 <input type="search" id="buscar-proveedor" class="form-control form-control-sm mb-1"
                        placeholder="{{ trans('search') }}..." autocomplete="off"
                        oninput="filtrarLista('codproveedor', this.value)">
-                <select name="codproveedor" id="codproveedor" class="form-control" size="1">
+                <select name="codproveedor" id="codproveedor" class="form-control" size="1"
+                        onchange="elegirDeLista(this, 'buscar-proveedor')">
                   <option value="">{{ trans('none') }}</option>
                   {% for p in fsc.proveedores %}
                   <option value="{{ p.codproveedor }}">{{ p.nombre }}</option>
@@ -204,10 +206,22 @@ function filtrarLista(idSelect, texto) {
         select.appendChild(opt);
     });
 
-    // Con resultados y sin nada elegido, se despliega para que se vea qué hay
+    // Con resultados se despliega para que se vea qué hay; al vaciar la búsqueda
+    // o al no quedar nada, se colapsa.
     select.size = (buscado !== '' && select.options.length > 1)
         ? Math.min(select.options.length, 8)
         : 1;
+}
+
+// Al elegir en la lista desplegada se vuelve a colapsar y se escribe el nombre en
+// el buscador: sin esto el desplegable se quedaba abierto y no había forma de saber
+// si la selección había cuajado.
+function elegirDeLista(select, idBuscador) {
+    select.size = 1;
+    var buscador = document.getElementById(idBuscador);
+    if (buscador) {
+        buscador.value = select.value === '' ? '' : select.options[select.selectedIndex].text;
+    }
 }
 
 function copiarEnlace() {
