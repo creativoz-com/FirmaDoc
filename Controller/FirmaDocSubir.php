@@ -13,6 +13,7 @@ namespace FacturaScripts\Plugins\FirmaDoc\Controller;
 use FacturaScripts\Core\Base\Controller;
 use FacturaScripts\Core\Model\AttachedFile;
 use FacturaScripts\Core\Tools;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
@@ -55,6 +56,9 @@ class FirmaDocSubir extends Controller
     /** @var array Proveedores para el selector */
     public $proveedores = [];
 
+    /** @var string Enlace de WhatsApp con el mensaje ya montado, vacío si no hay teléfono */
+    public $linkWhatsApp = '';
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
@@ -70,8 +74,11 @@ class FirmaDocSubir extends Controller
 
         $this->config = FirmaDocConfig::getConfig();
 
-        if ($this->request->request->get('action', '') === 'subir') {
+        $accion = $this->request->request->get('action', '');
+        if ($accion === 'subir') {
             $this->actionSubir();
+        } elseif ($accion === 'reenviar') {
+            $this->actionReenviar();
         }
 
         $this->clientes = (new \FacturaScripts\Core\Model\Cliente())
@@ -182,11 +189,79 @@ class FirmaDocSubir extends Controller
         $this->enviadoA = FirmaDocMailer::enviarAlGenerar($firma, $adjunto, $guardados, $modoMulti);
         $this->firmaCreada = $firma;
         $this->linkFirma = FirmaDocUrl::firma($firma->token);
+        $this->linkWhatsApp = $this->construirLinkWhatsApp($firma, $firmantes[0]);
 
         $this->mensaje = empty($this->enviadoA)
             ? Tools::lang()->trans('firmadoc-upload-created-not-sent')
             : Tools::lang()->trans('firmadoc-upload-created', ['%emails%' => implode(', ', $this->enviadoA)]);
         $this->mensajeTipo = empty($this->enviadoA) ? 'warning' : 'success';
+    }
+
+    /**
+     * Reenvía el enlace de firma de una solicitud recién creada.
+     */
+    private function actionReenviar(): void
+    {
+        $id = (int) $this->request->request->get('firmadoc_id', 0);
+        $firma = new FirmaDoc();
+        if (empty($id) || !$firma->loadFromCode($id)) {
+            return;
+        }
+
+        $documento = FirmaDocDocumento::cargar($firma->tipo_doc, (int) $firma->id_doc);
+        if (null === $documento) {
+            $this->mensaje = Tools::lang()->trans('firmadoc-document-not-found');
+            $this->mensajeTipo = 'danger';
+            return;
+        }
+
+        if (FirmaDocMailer::reenviarEmail($firma, $documento, null, $this->user->nick ?? null)) {
+            $this->mensaje = Tools::lang()->trans('firmadoc-send-email-sent', [
+                '%email%' => $firma->email_cliente ?? '',
+            ]);
+            $this->mensajeTipo = 'success';
+        } else {
+            $this->mensaje = Tools::lang()->trans('firmadoc-send-email-error');
+            $this->mensajeTipo = 'danger';
+        }
+
+        $this->firmaCreada = $firma;
+        $this->linkFirma = FirmaDocUrl::firma($firma->token);
+        $this->linkWhatsApp = $this->construirLinkWhatsApp($firma, [
+            'nombre' => $firma->firma_nombre ?? '',
+            'telefono' => $firma->telefono_cliente ?? '',
+        ]);
+    }
+
+    /**
+     * Enlace de wa.me con el mensaje de la plantilla ya sustituido.
+     * Devuelve cadena vacía si el firmante no dejó teléfono.
+     */
+    private function construirLinkWhatsApp(FirmaDoc $firma, array $firmante): string
+    {
+        $telefono = preg_replace('/[^0-9+]/', '', $firmante['telefono'] ?? '');
+        if (empty($telefono)) {
+            return '';
+        }
+
+        $texto = $this->config->reemplazarVariables($this->config->whatsapp_mensaje ?? '', [
+            'cliente' => $firmante['nombre'] ?? '',
+            'empresa' => FirmaDocMailer::getNombreEmpresaPublic(),
+            'tipo_doc' => Tools::lang()->trans('firmadoc-type-external'),
+            'codigo_doc' => $firma->getTitulo(),
+            'link_firma' => FirmaDocUrl::firma($firma->token),
+            'fecha_expiracion' => $firma->fecha_expiracion ?? '',
+            'importe' => '',
+        ]);
+
+        // Se preservan acentos y emojis: solo se codifica lo que la URL no admite
+        $codificado = implode('%0A', array_map(function ($linea) {
+            return preg_replace_callback('/[^\p{L}\p{N}\p{P}\p{S}\p{Zs}]/u', function ($m) {
+                return rawurlencode($m[0]);
+            }, $linea);
+        }, preg_split('/\r\n|\r|\n/', $texto)));
+
+        return 'https://wa.me/' . ltrim($telefono, '+') . '?text=' . $codificado;
     }
 
     /**

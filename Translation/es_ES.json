@@ -415,5 +415,7 @@
     "firmadoc-signed-email-subject": "Documento firmado: %doc%",
     "firmadoc-signed-email-body": "Le adjuntamos el documento %doc% ya firmado, junto con su certificado de firma.\n\nPuede comprobar su autenticidad en cualquier momento con el enlace de verificación.\n\nSaludos cordiales.",
     "firmadoc-estado": "Firma",
-    "firmadoc-signature-data": "Datos de la firma"
+    "firmadoc-signature-data": "Datos de la firma",
+    "firmadoc-no-phone-no-whatsapp": "Para enviarlo por WhatsApp, indica el teléfono del firmante al crear la solicitud.",
+    "firmadoc-send-via-whatsapp": "Enviar por WhatsApp"
 }
