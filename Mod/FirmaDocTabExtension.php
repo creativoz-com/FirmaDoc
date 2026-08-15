@@ -212,8 +212,15 @@ class FirmaDocTabExtension
             $code = $this->request->request->get('code', '');
             $activetab = $this->request->request->get('activetab', 'FirmaDocTab');
             $controller = $this->getPageData()['name'] ?? '';
-            // El retardo de 3 s es el mismo que usa AdminPlugins del núcleo: da tiempo
-            // a que se vea el mensaje antes de que el navegador recargue por GET.
+            // Si algo ha ido mal —un envío rechazado por el servidor de correo, por
+            // ejemplo— no se redirige: el mensaje desaparecía antes de poder leerlo.
+            // Solo se hace el PRG cuando la operación ha terminado bien.
+            foreach (\FacturaScripts\Core\Base\MiniLog::read() as $linea) {
+                if (in_array($linea['level'], ['error', 'critical', 'warning'], true)) {
+                    return;
+                }
+            }
+
             $this->redirect($controller . '?code=' . urlencode($code) . '&activetab=' . urlencode($activetab), 3);
         };
     }

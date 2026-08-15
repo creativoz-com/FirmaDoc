@@ -380,11 +380,6 @@ class FirmaDoc extends ModelClass
         );
     }
 
-    public function url(string $type = 'auto', string $list = 'ListFirmaDoc'): string
-    {
-        return parent::url($type, $list);
-    }
-
     /**
      * Nombre del destinatario para listados: cliente, proveedor o la dirección suelta.
      */

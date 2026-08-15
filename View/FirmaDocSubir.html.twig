@@ -68,9 +68,14 @@
             {# Asociar con cliente o proveedor: es lo que permite luego encontrar el
                documento desde su ficha y filtrar el listado general. #}
             <div class="form-row">
+              {# Con cientos de terceros un desplegable suelto es inservible: encima
+                 va un buscador que filtra la lista según se escribe. #}
               <div class="form-group col-md-6">
-                <label for="codcliente">{{ trans('customer') }}</label>
-                <select name="codcliente" id="codcliente" class="form-control">
+                <label for="buscar-cliente">{{ trans('customer') }}</label>
+                <input type="search" id="buscar-cliente" class="form-control form-control-sm mb-1"
+                       placeholder="{{ trans('search') }}..." autocomplete="off"
+                       oninput="filtrarLista('codcliente', this.value)">
+                <select name="codcliente" id="codcliente" class="form-control" size="1">
                   <option value="">{{ trans('none') }}</option>
                   {% for c in fsc.clientes %}
                   <option value="{{ c.codcliente }}">{{ c.nombre }}</option>
@@ -78,8 +83,11 @@
                 </select>
               </div>
               <div class="form-group col-md-6">
-                <label for="codproveedor">{{ trans('supplier') }}</label>
-                <select name="codproveedor" id="codproveedor" class="form-control">
+                <label for="buscar-proveedor">{{ trans('supplier') }}</label>
+                <input type="search" id="buscar-proveedor" class="form-control form-control-sm mb-1"
+                       placeholder="{{ trans('search') }}..." autocomplete="off"
+                       oninput="filtrarLista('codproveedor', this.value)">
+                <select name="codproveedor" id="codproveedor" class="form-control" size="1">
                   <option value="">{{ trans('none') }}</option>
                   {% for p in fsc.proveedores %}
                   <option value="{{ p.codproveedor }}">{{ p.nombre }}</option>
@@ -164,6 +172,42 @@ function quitarFirmante(boton) {
 function actualizarModo() {
     var n = document.querySelectorAll('.fila-firmante').length;
     document.getElementById('grupo-modo').style.display = n > 1 ? 'block' : 'none';
+}
+
+// Filtra las opciones del desplegable por lo que se teclea en su buscador.
+// Se guardan todas la primera vez para poder restaurarlas al borrar la búsqueda.
+var opcionesOriginales = {};
+
+function filtrarLista(idSelect, texto) {
+    var select = document.getElementById(idSelect);
+    if (!select) return;
+
+    if (!opcionesOriginales[idSelect]) {
+        opcionesOriginales[idSelect] = Array.from(select.options).map(function (o) {
+            return {valor: o.value, texto: o.text};
+        });
+    }
+
+    var buscado = texto.trim().toLowerCase();
+    var seleccionado = select.value;
+    select.innerHTML = '';
+
+    opcionesOriginales[idSelect].forEach(function (o) {
+        // La opción vacía se mantiene siempre, para poder no asociar a nadie
+        if (o.valor !== '' && buscado !== '' && o.texto.toLowerCase().indexOf(buscado) === -1) {
+            return;
+        }
+        var opt = document.createElement('option');
+        opt.value = o.valor;
+        opt.text = o.texto;
+        if (o.valor === seleccionado) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    // Con resultados y sin nada elegido, se despliega para que se vea qué hay
+    select.size = (buscado !== '' && select.options.length > 1)
+        ? Math.min(select.options.length, 8)
+        : 1;
 }
 
 function copiarEnlace() {

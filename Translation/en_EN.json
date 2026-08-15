@@ -181,7 +181,7 @@
     "firmadoc-email-expires-in": "The link expires in <strong>%days% day(s)</strong> (%date%).",
     "firmadoc-email-expires-in-short": "The link expires in <strong>%days% day(s)</strong>.",
     "firmadoc-email-sign-now-btn": "Sign now",
-    "firmadoc-admin-title": "Document Signing",
+    "firmadoc-admin-title": "Settings",
     "firmadoc-admin-subtitle": "Plugin configuration",
     "firmadoc-admin-saved": "Configuration saved successfully.",
     "firmadoc-admin-save-error": "Error saving. Check required fields.",
@@ -404,5 +404,7 @@
     "firmadoc-resend-email": "Resend email",
     "firmadoc-resend-history": "Send history",
     "firmadoc-send-email-sent": "Signature email sent to %email%.",
-    "firmadoc-send-email-error": "The email could not be sent. Check the FacturaScripts email settings."
+    "firmadoc-send-email-error": "The email could not be sent. Check the FacturaScripts email settings.",
+    "firmadoc-sign-date": "Signature date",
+    "firmadoc-send-expires": "Expires"
 }

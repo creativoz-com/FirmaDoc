@@ -181,7 +181,7 @@
     "firmadoc-email-expires-in": "L'enllaç caduca en <strong>%days% dia(es)</strong> (%date%).",
     "firmadoc-email-expires-in-short": "L'enllaç caduca en <strong>%days% dia(es)</strong>.",
     "firmadoc-email-sign-now-btn": "Signar ara",
-    "firmadoc-admin-title": "Signatura de Documents",
+    "firmadoc-admin-title": "Configuració",
     "firmadoc-admin-subtitle": "Configuració del plugin",
     "firmadoc-admin-saved": "Configuració desada correctament.",
     "firmadoc-admin-save-error": "Error en desar. Reviseu els camps obligatoris.",
@@ -404,5 +404,7 @@
     "firmadoc-resend-email": "Reenviar email",
     "firmadoc-resend-history": "Historial d'enviaments",
     "firmadoc-send-email-sent": "S'ha enviat l'email de signatura a %email%.",
-    "firmadoc-send-email-error": "No s'ha pogut enviar l'email. Revisa la configuració de correu de FacturaScripts."
+    "firmadoc-send-email-error": "No s'ha pogut enviar l'email. Revisa la configuració de correu de FacturaScripts.",
+    "firmadoc-sign-date": "Data de signatura",
+    "firmadoc-send-expires": "Caduca"
 }

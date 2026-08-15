@@ -181,7 +181,7 @@
     "firmadoc-email-expires-in": "El enlace caduca en <strong>%days% día(s)</strong> (%date%).",
     "firmadoc-email-expires-in-short": "El enlace caduca en <strong>%days% día(s)</strong>.",
     "firmadoc-email-sign-now-btn": "Firmar ahora",
-    "firmadoc-admin-title": "Firma Documentos",
+    "firmadoc-admin-title": "Configuración",
     "firmadoc-admin-subtitle": "Configuración del plugin",
     "firmadoc-admin-saved": "Configuración guardada correctamente.",
     "firmadoc-admin-save-error": "Error al guardar. Revisa los campos obligatorios.",
@@ -404,5 +404,7 @@
     "firmadoc-resend-email": "Reenviar email",
     "firmadoc-resend-history": "Historial de envíos",
     "firmadoc-send-email-sent": "Email de firma enviado a %email%.",
-    "firmadoc-send-email-error": "No se pudo enviar el email. Revisa la configuración de correo de FacturaScripts."
+    "firmadoc-send-email-error": "No se pudo enviar el email. Revisa la configuración de correo de FacturaScripts.",
+    "firmadoc-sign-date": "Fecha de firma",
+    "firmadoc-send-expires": "Caduca"
 }
