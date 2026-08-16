@@ -360,6 +360,19 @@ class FirmaDoc extends ModelClass
             return null;
         }
 
+        // Con paquete, la huella es la del conjunto de documentos firmables
+        if ($this->tienePaquete()) {
+            $hashes = [];
+            foreach ($this->getAdjuntos(FirmaDocAdjunto::TIPO_FIRMAR) as $adjunto) {
+                $ruta = $adjunto->getRuta();
+                if ($ruta === '') {
+                    return null;
+                }
+                $hashes[] = self::calcularHashFichero($ruta);
+            }
+            return hash_equals((string) $this->doc_hash, self::calcularHashConjunto($hashes));
+        }
+
         // En documentos externos la huella es la del PDF subido
         if ($this->esExterno()) {
             $ruta = property_exists($documento, 'path') && !empty($documento->path)
@@ -418,6 +431,39 @@ class FirmaDoc extends ModelClass
             return null;
         }
         return \FacturaScripts\Core\Model\AttachedFile::find($this->id_doc);
+    }
+
+    /**
+     * Adjuntos de la solicitud. Vacío en las firmas de un solo documento, que siguen
+     * apuntando al fichero desde id_doc.
+     *
+     * @return FirmaDocAdjunto[]
+     */
+    public function getAdjuntos(string $tipo = ''): array
+    {
+        return empty($this->id) ? [] : FirmaDocAdjunto::porSolicitud((int) $this->id, $tipo);
+    }
+
+    /**
+     * True si la solicitud lleva un paquete de documentos en lugar de uno solo.
+     */
+    public function tienePaquete(): bool
+    {
+        return !empty($this->getAdjuntos());
+    }
+
+    /**
+     * Huella del conjunto de documentos que se firman.
+     *
+     * Se encadenan las huellas individuales en orden y se vuelve a resumir: así el
+     * certificado puede acreditar tanto el paquete completo como cada pieza por
+     * separado, y cambiar cualquiera de ellas —o su orden— rompe la huella global.
+     *
+     * @param string[] $hashes
+     */
+    public static function calcularHashConjunto(array $hashes): string
+    {
+        return hash('sha256', implode('|', $hashes));
     }
 
     /**

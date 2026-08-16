@@ -19,10 +19,12 @@ use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocEmail;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocEmpresa;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPaquete;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPdfUnir;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPDFExport;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
+use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocAdjunto;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocFirmante;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
@@ -66,6 +68,15 @@ class FirmaDocPublic extends Controller
     /** @var string Mensaje de error del código, ya traducido */
     public $otpError = '';
 
+    /** @var FirmaDocAdjunto[] Documentos que se firman */
+    public $documentosFirmar = [];
+
+    /** @var FirmaDocAdjunto[] Anexos que solo se consultan */
+    public $documentosAnexos = [];
+
+    /** @var string Enlace de descarga del paquete completo */
+    public $linkPaquete = '';
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
@@ -107,6 +118,22 @@ class FirmaDocPublic extends Controller
 
         if ($accion === 'ver_pdf') {
             $this->servirPdf($response);
+            return true;
+        }
+
+        if ($accion === 'ver_adjunto') {
+            $this->servirAdjunto($response);
+            return true;
+        }
+
+        if ($accion === 'ver_paquete') {
+            $firma = FirmaDoc::getByToken($this->request->get('token', ''));
+            if (null === $firma) {
+                $this->setTemplate(false);
+                $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-invalid-link') . '</h1>');
+                return true;
+            }
+            $this->servirPaquete($response, $firma);
             return true;
         }
 
@@ -220,7 +247,16 @@ class FirmaDocPublic extends Controller
      */
     private function pdfDocumentoExterno(FirmaDoc $firma, object $documento): string
     {
-        $ruta = FirmaDocDocumento::rutaFicheroExterno($firma);
+        // Con paquete no se puede entregar un solo PDF: los originales no se tocan y
+        // fusionarlos daría un fichero que ya no es ninguno de los firmados. Se sirve
+        // el primero a firmar; el conjunto completo va por el enlace del paquete.
+        $adjuntos = $firma->getAdjuntos(FirmaDocAdjunto::TIPO_FIRMAR);
+        if (count($adjuntos) > 1) {
+            $ruta = $adjuntos[0]->getRuta();
+            return $ruta === '' ? '' : (string) file_get_contents($ruta);
+        }
+
+        $ruta = !empty($adjuntos) ? $adjuntos[0]->getRuta() : FirmaDocDocumento::rutaFicheroExterno($firma);
         if ($ruta === '') {
             return '';
         }
@@ -235,6 +271,67 @@ class FirmaDocPublic extends Controller
         $unido = FirmaDocPdfUnir::unir($ruta, $certificado);
 
         return $unido ?? $original;
+    }
+
+    /**
+     * Sirve uno de los ficheros del paquete.
+     *
+     * Se comprueba que el adjunto pertenezca a la solicitud del token: sin eso,
+     * cambiando el número en la URL se podrían leer documentos de otras firmas.
+     */
+    private function servirAdjunto(&$response): void
+    {
+        $this->setTemplate(false);
+
+        $firma = FirmaDoc::getByToken($this->request->get('token', ''));
+        if (null === $firma) {
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-invalid-link') . '</h1>');
+            return;
+        }
+
+        $adjunto = new FirmaDocAdjunto();
+        $id = (int) $this->request->get('doc', 0);
+        if (empty($id) || !$adjunto->loadFromCode($id)
+            || (int) $adjunto->id_firmadoc !== (int) $firma->id) {
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-document-not-found') . '</h1>');
+            return;
+        }
+
+        $ruta = $adjunto->getRuta();
+        if ($ruta === '') {
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-document-not-found') . '</h1>');
+            return;
+        }
+
+        $response->headers->set('Content-Type', 'application/pdf');
+        $response->headers->set('Content-Disposition', 'inline; filename="' . $adjunto->getNombre() . '"');
+        $response->setContent((string) file_get_contents($ruta));
+    }
+
+    /**
+     * Sirve todos los documentos de la solicitud en un ZIP, con el certificado dentro
+     * si ya está firmada.
+     */
+    private function servirPaquete(&$response, FirmaDoc $firma): void
+    {
+        $this->setTemplate(false);
+
+        $documento = $this->cargarDocumento($firma->tipo_doc, (int) $firma->id_doc);
+        $certificado = ($documento && $firma->estado === FirmaDoc::ESTADO_FIRMADO)
+            ? FirmaDocPDFExport::certificadoSuelto($firma, $documento)
+            : '';
+
+        $zip = FirmaDocPaquete::crear($firma, $certificado);
+        if (null === $zip) {
+            $response->setContent('<h1>' . Tools::lang()->trans('firmadoc-document-not-found') . '</h1>');
+            return;
+        }
+
+        $nombre = preg_replace('/[^A-Za-z0-9._-]+/', '_', $firma->getTitulo()) ?: 'documentos';
+
+        $response->headers->set('Content-Type', 'application/zip');
+        $response->headers->set('Content-Disposition', 'attachment; filename="' . $nombre . '.zip"');
+        $response->setContent($zip);
     }
 
     /**
@@ -469,6 +566,13 @@ class FirmaDocPublic extends Controller
         }
 
         $this->urlBase = FirmaDocUrl::base();
+
+        // Documentos del paquete, para poder listarlos en la pantalla de firma
+        $this->documentosFirmar = $this->firma->getAdjuntos(FirmaDocAdjunto::TIPO_FIRMAR);
+        $this->documentosAnexos = $this->firma->getAdjuntos(FirmaDocAdjunto::TIPO_ANEXO);
+        if (count($this->documentosFirmar) + count($this->documentosAnexos) > 1) {
+            $this->linkPaquete = FirmaDocUrl::firma($this->firma->token) . '&action=ver_paquete';
+        }
 
         // El link del PDF usa el token maestro (ver_pdf busca en firmadoc directamente)
         $this->linkDocumento = FirmaDocUrl::firma($this->firma->token) . '&action=ver_pdf';

@@ -12,6 +12,7 @@ namespace FacturaScripts\Plugins\FirmaDoc;
 
 use FacturaScripts\Core\Template\InitClass;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
+use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocAdjunto;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocFirmante;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocReenvio;
@@ -100,6 +101,7 @@ class Init extends InitClass
         new FirmaDocConfig();
         new FirmaDocFirmante();
         new FirmaDocReenvio();
+        new FirmaDocAdjunto();
         // Limpiar posibles registros EmailNotification contaminados de versiones anteriores
         FirmaDocMailer::limpiarPlantillasContaminadas();
     }

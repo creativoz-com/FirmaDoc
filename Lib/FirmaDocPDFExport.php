@@ -262,6 +262,28 @@ class FirmaDocPDFExport extends PDFExport
                     $contentW - 8, 'left');
                 $y -= 30;
 
+                // Relación de documentos cuando la firma cubre un paquete: el
+                // certificado tiene que decir exactamente qué se firmó, pieza a pieza,
+                // y con la huella de cada una.
+                $adjuntos = $firma->getAdjuntos();
+                if (count($adjuntos) > 1) {
+                    $this->pdf->setColor(0.13, 0.45, 0.25);
+                    $this->pdf->addText($marginL, $y, 9, $t('firmadoc-pdf-documents'), $contentW, 'left');
+                    $y -= 12;
+                    foreach ($adjuntos as $adj) {
+                        $etiqueta = $adj->esFirmable()
+                            ? $t('firmadoc-to-sign')
+                            : $t('firmadoc-annex');
+                        $this->pdf->setColor(0.35, 0.35, 0.35);
+                        $this->pdf->addText($marginL + 6, $y, 7,
+                            '[' . $etiqueta . '] ' . $adj->getNombre()
+                            . '  ' . substr((string) $adj->doc_hash, 0, 24) . '...',
+                            $contentW - 12, 'left');
+                        $y -= 10;
+                    }
+                    $y -= 4;
+                }
+
                 // Código de verificación: es lo que se teclea en el portal público,
                 // y a diferencia de la huella se puede leer y copiar sin equivocarse.
                 if (!empty($firma->codigo_verificacion)) {

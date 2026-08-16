@@ -362,8 +362,8 @@
     "firmadoc-otp-save-failed": "FirmaDoc: the verification code could not be stored in the database.",
     "firmadoc-upload-title": "Send document for signature",
     "firmadoc-upload-document": "Document",
-    "firmadoc-upload-file": "PDF file",
-    "firmadoc-upload-help": "PDF only, up to 20 MB. The file is stored as is and never modified.",
+    "firmadoc-upload-file": "Documents to sign",
+    "firmadoc-upload-help": "PDF only, up to 20 MB each. You can pick several: the signer accepts them all in a single act. Files are never modified.",
     "firmadoc-upload-doc-title": "Title",
     "firmadoc-upload-title-placeholder": "Maintenance agreement 2026",
     "firmadoc-upload-send": "Create and send for signature",
@@ -417,5 +417,15 @@
     "firmadoc-estado": "Signature",
     "firmadoc-signature-data": "Signature data",
     "firmadoc-no-phone-no-whatsapp": "To send it by WhatsApp, enter the signer phone number when creating the request.",
-    "firmadoc-send-via-whatsapp": "Send via WhatsApp"
+    "firmadoc-send-via-whatsapp": "Send via WhatsApp",
+    "firmadoc-annexes": "Informative annexes",
+    "firmadoc-annexes-help": "Documents that come along but are NOT signed: terms, drawings, reports. They are sent and can be read, but do not enter the hash nor appear as signed in the certificate.",
+    "firmadoc-documents": "Documents",
+    "firmadoc-to-sign": "To sign",
+    "firmadoc-annex": "Annex",
+    "firmadoc-annexes-note": "not signed, sent for reference only",
+    "firmadoc-download-all": "Download all as ZIP",
+    "firmadoc-no-zip": "FirmaDoc: packaging requires the PHP zip extension.",
+    "firmadoc-zip-failed": "FirmaDoc: could not build the package (%error%).",
+    "firmadoc-pdf-documents": "DOCUMENTS"
 }

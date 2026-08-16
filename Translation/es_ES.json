@@ -362,8 +362,8 @@
     "firmadoc-otp-save-failed": "FirmaDoc: no se pudo guardar el código de verificación en la base de datos.",
     "firmadoc-upload-title": "Enviar documento a firma",
     "firmadoc-upload-document": "Documento",
-    "firmadoc-upload-file": "Fichero PDF",
-    "firmadoc-upload-help": "Solo PDF, hasta 20 MB. El fichero se guarda tal cual y no se modifica.",
+    "firmadoc-upload-file": "Documentos a firmar",
+    "firmadoc-upload-help": "Solo PDF, hasta 20 MB cada uno. Puedes elegir varios: el firmante los acepta todos en un mismo acto. Los ficheros no se modifican.",
     "firmadoc-upload-doc-title": "Título",
     "firmadoc-upload-title-placeholder": "Contrato de mantenimiento 2026",
     "firmadoc-upload-send": "Crear y enviar a firma",
@@ -417,5 +417,15 @@
     "firmadoc-estado": "Firma",
     "firmadoc-signature-data": "Datos de la firma",
     "firmadoc-no-phone-no-whatsapp": "Para enviarlo por WhatsApp, indica el teléfono del firmante al crear la solicitud.",
-    "firmadoc-send-via-whatsapp": "Enviar por WhatsApp"
+    "firmadoc-send-via-whatsapp": "Enviar por WhatsApp",
+    "firmadoc-annexes": "Anexos informativos",
+    "firmadoc-annexes-help": "Documentos que acompañan pero NO se firman: condiciones generales, planos, informes. Se envían y se pueden consultar, pero no entran en la huella ni en el certificado como firmados.",
+    "firmadoc-documents": "Documentos",
+    "firmadoc-to-sign": "A firmar",
+    "firmadoc-annex": "Anexo",
+    "firmadoc-annexes-note": "no se firman, solo se envían para su consulta",
+    "firmadoc-download-all": "Descargar todo en un ZIP",
+    "firmadoc-no-zip": "FirmaDoc: el paquete necesita la extensión zip de PHP.",
+    "firmadoc-zip-failed": "FirmaDoc: no se pudo crear el paquete (%error%).",
+    "firmadoc-pdf-documents": "DOCUMENTOS"
 }

@@ -362,8 +362,8 @@
     "firmadoc-otp-save-failed": "FirmaDoc: no s'ha pogut desar el codi de verificació a la base de dades.",
     "firmadoc-upload-title": "Enviar document a signar",
     "firmadoc-upload-document": "Document",
-    "firmadoc-upload-file": "Fitxer PDF",
-    "firmadoc-upload-help": "Només PDF, fins a 20 MB. El fitxer es desa tal qual i no es modifica.",
+    "firmadoc-upload-file": "Documents a signar",
+    "firmadoc-upload-help": "Només PDF, fins a 20 MB cadascun. En pots triar diversos: el signant els accepta tots en un mateix acte. Els fitxers no es modifiquen.",
     "firmadoc-upload-doc-title": "Títol",
     "firmadoc-upload-title-placeholder": "Contracte de manteniment 2026",
     "firmadoc-upload-send": "Crear i enviar a signar",
@@ -417,5 +417,15 @@
     "firmadoc-estado": "Signatura",
     "firmadoc-signature-data": "Dades de la signatura",
     "firmadoc-no-phone-no-whatsapp": "Per enviar-ho per WhatsApp, indica el telèfon del signant en crear la sol·licitud.",
-    "firmadoc-send-via-whatsapp": "Enviar per WhatsApp"
+    "firmadoc-send-via-whatsapp": "Enviar per WhatsApp",
+    "firmadoc-annexes": "Annexos informatius",
+    "firmadoc-annexes-help": "Documents que acompanyen però NO se signen: condicions, plànols, informes. S'envien i es poden consultar, però no entren a l'empremta ni al certificat com a signats.",
+    "firmadoc-documents": "Documents",
+    "firmadoc-to-sign": "A signar",
+    "firmadoc-annex": "Annex",
+    "firmadoc-annexes-note": "no se signen, només s'envien per consultar",
+    "firmadoc-download-all": "Descarregar tot en un ZIP",
+    "firmadoc-no-zip": "FirmaDoc: el paquet necessita l'extensió zip de PHP.",
+    "firmadoc-zip-failed": "FirmaDoc: no s'ha pogut crear el paquet (%error%).",
+    "firmadoc-pdf-documents": "DOCUMENTS"
 }

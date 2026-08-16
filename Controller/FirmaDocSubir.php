@@ -17,6 +17,7 @@ use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
+use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocAdjunto;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocFirmante;
 
@@ -91,12 +92,28 @@ class FirmaDocSubir extends Controller
 
     private function actionSubir(): void
     {
-        $fichero = $this->request->files->get('documento');
-        $error = $this->validarFichero($fichero);
-        if ($error !== '') {
-            $this->mensaje = Tools::lang()->trans($error);
+        // Los que se firman y los que solo acompañan llegan en dos campos distintos:
+        // la diferencia es jurídica, así que conviene que sea explícita al subirlos.
+        $aFirmar = $this->request->files->getArray('documentos');
+        if (empty($aFirmar)) {
+            $suelto = $this->request->files->get('documento');
+            $aFirmar = $suelto ? [$suelto] : [];
+        }
+        $anexos = $this->request->files->getArray('anexos');
+
+        if (empty($aFirmar)) {
+            $this->mensaje = Tools::lang()->trans('firmadoc-upload-no-file');
             $this->mensajeTipo = 'danger';
             return;
+        }
+
+        foreach (array_merge($aFirmar, $anexos) as $f) {
+            $error = $this->validarFichero($f);
+            if ($error !== '') {
+                $this->mensaje = Tools::lang()->trans($error);
+                $this->mensajeTipo = 'danger';
+                return;
+            }
         }
 
         $firmantes = $this->leerFirmantes();
@@ -106,32 +123,27 @@ class FirmaDocSubir extends Controller
             return;
         }
 
-        // El PDF se custodia con AttachedFile, que es donde FacturaScripts guarda los
-        // ficheros: hereda su gestión de rutas, límites de almacenamiento y tokens de
-        // descarga. El núcleo espera que el fichero esté ya en MyFiles/ antes de
-        // guardar el registro, así que primero se mueve y después se crea.
-        $destino = FS_FOLDER . '/MyFiles/';
-        $nombreDestino = $fichero->getClientOriginalName();
-        if (file_exists($destino . $nombreDestino)) {
-            $nombreDestino = uniqid() . '_' . $nombreDestino;
+        $ficherosFirmar = [];
+        foreach ($aFirmar as $f) {
+            $guardado = $this->guardarFichero($f);
+            if (null === $guardado) {
+                $this->mensaje = Tools::lang()->trans('firmadoc-upload-store-failed');
+                $this->mensajeTipo = 'danger';
+                return;
+            }
+            $ficherosFirmar[] = $guardado;
         }
 
-        if (!$fichero->move($destino, $nombreDestino)) {
-            $this->mensaje = Tools::lang()->trans('firmadoc-upload-store-failed');
-            $this->mensajeTipo = 'danger';
-            return;
+        $ficherosAnexos = [];
+        foreach ($anexos as $f) {
+            $guardado = $this->guardarFichero($f);
+            if (null !== $guardado) {
+                $ficherosAnexos[] = $guardado;
+            }
         }
 
-        $adjunto = new AttachedFile();
-        // Se usa el nombre con el que realmente se guardó, no el original: si hubo
-        // colisión son distintos y el registro apuntaría a un fichero que no es.
-        $adjunto->path = $nombreDestino;
-        if (!$adjunto->save()) {
-            @unlink($destino . $nombreDestino);
-            $this->mensaje = Tools::lang()->trans('firmadoc-upload-store-failed');
-            $this->mensajeTipo = 'danger';
-            return;
-        }
+        // El primero da nombre y sirve de referencia para las firmas de un solo fichero
+        $adjunto = $ficherosFirmar[0];
 
         $titulo = trim($this->request->request->get('titulo', ''))
             ?: pathinfo($adjunto->filename, PATHINFO_FILENAME);
@@ -159,14 +171,32 @@ class FirmaDocSubir extends Controller
         $firma->codcliente = $this->request->request->get('codcliente', null) ?: null;
         $firma->codproveedor = $this->request->request->get('codproveedor', null) ?: null;
         $firma->nick = $this->user->nick ?? null;
-        // La huella es la del PDF entero, byte a byte
-        $firma->doc_hash = FirmaDoc::calcularHashFichero(FS_FOLDER . '/' . $adjunto->path);
+        // Con un solo documento, la huella es la del fichero; con paquete, la del
+        // conjunto, encadenando las huellas individuales en orden.
+        $hashes = [];
+        foreach ($ficherosFirmar as $f) {
+            $hashes[] = FirmaDoc::calcularHashFichero(FS_FOLDER . '/' . $f->path);
+        }
+        $firma->doc_hash = count($hashes) === 1
+            ? $hashes[0]
+            : FirmaDoc::calcularHashConjunto($hashes);
         $firma->generarToken();
 
         if (!$firma->save()) {
             $this->mensaje = Tools::lang()->trans('firmadoc-link-generate-error');
             $this->mensajeTipo = 'danger';
             return;
+        }
+
+        // Los ficheros se registran siempre, también cuando solo hay uno: así la ficha,
+        // el certificado y la descarga tienen una única forma de recorrerlos.
+        $orden = 1;
+        foreach ($ficherosFirmar as $f) {
+            $this->guardarAdjunto($firma->id, $f, FirmaDocAdjunto::TIPO_FIRMAR, $orden++);
+        }
+        $orden = 1;
+        foreach ($ficherosAnexos as $f) {
+            $this->guardarAdjunto($firma->id, $f, FirmaDocAdjunto::TIPO_ANEXO, $orden++);
         }
 
         $guardados = [];
@@ -195,6 +225,46 @@ class FirmaDocSubir extends Controller
             ? Tools::lang()->trans('firmadoc-upload-created-not-sent')
             : Tools::lang()->trans('firmadoc-upload-created', ['%emails%' => implode(', ', $this->enviadoA)]);
         $this->mensajeTipo = empty($this->enviadoA) ? 'warning' : 'success';
+    }
+
+    /**
+     * Mueve un fichero subido a MyFiles y crea su AttachedFile.
+     */
+    private function guardarFichero($fichero): ?AttachedFile
+    {
+        $destino = FS_FOLDER . '/MyFiles/';
+        $nombreDestino = $fichero->getClientOriginalName();
+        if (file_exists($destino . $nombreDestino)) {
+            $nombreDestino = uniqid() . '_' . $nombreDestino;
+        }
+
+        if (!$fichero->move($destino, $nombreDestino)) {
+            return null;
+        }
+
+        $adjunto = new AttachedFile();
+        // El nombre con el que se guardó de verdad, no el original: si hubo colisión
+        // son distintos y el registro apuntaría a otro fichero.
+        $adjunto->path = $nombreDestino;
+        if (!$adjunto->save()) {
+            @unlink($destino . $nombreDestino);
+            return null;
+        }
+
+        return $adjunto;
+    }
+
+    private function guardarAdjunto(int $idFirma, AttachedFile $fichero, string $tipo, int $orden): void
+    {
+        $adjunto = new FirmaDocAdjunto();
+        $adjunto->clear();
+        $adjunto->id_firmadoc = $idFirma;
+        $adjunto->idfile = $fichero->idfile;
+        $adjunto->tipo = $tipo;
+        $adjunto->orden = $orden;
+        $adjunto->nombre = mb_substr((string) $fichero->filename, 0, 200);
+        $adjunto->doc_hash = FirmaDoc::calcularHashFichero(FS_FOLDER . '/' . $fichero->path);
+        $adjunto->save();
     }
 
     /**
