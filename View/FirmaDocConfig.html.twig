@@ -12,17 +12,25 @@
 {% extends "Master/MenuBgTemplate.html.twig" %}
 
 {% block body %}
-<div class="container-fluid">
-  <div class="row justify-content-center">
-    <div class="col-12 col-xl-10" style="max-width:900px">
+{# Ancho completo y sin columna centrada, como el resto de pantallas del ERP: la
+   caja estrecha de antes la hacía parecer de otra aplicación. #}
+<div class="container-fluid mt-3">
+  <div class="row">
+    <div class="col">
 
-      {# CABECERA #}
-      <div class="d-flex align-items-center mb-3 mt-3">
-        <i class="fas fa-signature fa-2x text-primary me-3"></i>
-        <div>
-          <h3 class="mb-0">FirmaDoc</h3>
-          <small class="text-muted">{{ trans('firmadoc-admin-subtitle') }}</small>
+      {# CABECERA — el botón de guardar también aquí arriba, para no tener que
+         recorrer toda la pantalla cada vez que se cambia una casilla. #}
+      <div class="d-flex align-items-center justify-content-between flex-wrap mb-3">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-signature fa-2x text-primary me-3"></i>
+          <div>
+            <h3 class="h4 mb-0">FirmaDoc</h3>
+            <small class="text-muted">{{ trans('firmadoc-admin-subtitle') }}</small>
+          </div>
         </div>
+        <button type="submit" form="form-firmadoc-config" class="btn btn-primary">
+          <i class="fas fa-save me-2"></i>{{ trans('firmadoc-admin-btn-save') }}
+        </button>
       </div>
 
       {# MENSAJE GUARDADO #}
@@ -38,12 +46,12 @@
         </div>
       {% endif %}
 
-      <form method="post">
+      <form method="post" id="form-firmadoc-config">
         <input type="hidden" name="action" value="save">
 
         {# ===================== MODOS DE FIRMA ===================== #}
         <div class="card shadow mb-3">
-          <div class="card-header bg-light">
+          <div class="card-header">
             <h5 class="mb-0"><i class="fas fa-pen-nib me-2 text-primary"></i> {{ trans('firmadoc-admin-sign-modes') }}</h5>
           </div>
           <div class="card-body">
@@ -122,7 +130,7 @@
 
         {# ===================== LINK Y EXPIRACIÓN ===================== #}
         <div class="card shadow mb-3">
-          <div class="card-header bg-light">
+          <div class="card-header">
             <h5 class="mb-0"><i class="fas fa-link me-2 text-primary"></i> {{ trans('firmadoc-admin-link-expiration') }}</h5>
           </div>
           <div class="card-body">
@@ -292,7 +300,7 @@
 
         {# ===================== NOTIFICACIONES EMPRESA ===================== #}
         <div class="card shadow mb-3">
-          <div class="card-header bg-light">
+          <div class="card-header">
             <h5 class="mb-0"><i class="fas fa-bell me-2 text-primary"></i> {{ trans('firmadoc-admin-company-notifications') }}</h5>
           </div>
           <div class="card-body">
@@ -318,7 +326,7 @@
 
         {# ===================== APARIENCIA ===================== #}
         <div class="card shadow mb-3">
-          <div class="card-header bg-light">
+          <div class="card-header">
             <h5 class="mb-0"><i class="fas fa-palette me-2 text-primary"></i> {{ trans('firmadoc-admin-appearance') }}</h5>
           </div>
           <div class="card-body">
@@ -339,7 +347,7 @@
 
         {# ===================== TEXTO LEGAL ===================== #}
         <div class="card shadow mb-3">
-          <div class="card-header bg-light">
+          <div class="card-header">
             <h5 class="mb-0"><i class="fas fa-gavel me-2 text-primary"></i> {{ trans('firmadoc-admin-legal') }}</h5>
           </div>
           <div class="card-body">
@@ -361,7 +369,7 @@
 
         {# ===================== EMAIL AL CLIENTE ===================== #}
         <div class="card shadow mb-3">
-          <div class="card-header bg-light">
+          <div class="card-header">
             <h5 class="mb-0"><i class="fas fa-envelope me-2 text-primary"></i> {{ trans('firmadoc-admin-email-template') }}</h5>
           </div>
           <div class="card-body">
@@ -377,7 +385,7 @@
               <small class="text-muted fw-bold">{{ trans('firmadoc-admin-available-vars') }}</small><br>
               <div class="mt-1">
                 {% for var in ['{{cliente}}','{{empresa}}','{{tipo_doc}}','{{codigo_doc}}','{{link_firma}}','{{fecha_expiracion}}','{{dias_restantes}}','{{importe}}'] %}
-                  <span class="badge bg-success me-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
+                  <span class="badge bg-success me-1 mb-1 var-copiable font-monospace" style="cursor:pointer" data-var="{{ var }}">{{ var }}</span>
                 {% endfor %}
               </div>
             </div>
@@ -386,7 +394,7 @@
 
         {# ===================== WHATSAPP ===================== #}
         <div class="card shadow mb-3">
-          <div class="card-header bg-light">
+          <div class="card-header">
             <h5 class="mb-0"><i class="fab fa-whatsapp me-2 text-success"></i> {{ trans('firmadoc-admin-whatsapp-template') }}</h5>
           </div>
           <div class="card-body">
@@ -399,7 +407,7 @@
               <small class="text-muted fw-bold">{{ trans('firmadoc-admin-available-vars-wa') }}</small><br>
               <div class="mt-1">
                 {% for var in ['{{cliente}}','{{empresa}}','{{tipo_doc}}','{{codigo_doc}}','{{link_firma}}','{{fecha_expiracion}}','{{importe}}'] %}
-                  <span class="badge bg-success me-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
+                  <span class="badge bg-success me-1 mb-1 var-copiable font-monospace" style="cursor:pointer" data-var="{{ var }}">{{ var }}</span>
                 {% endfor %}
               </div>
             </div>
@@ -408,7 +416,7 @@
 
         {# EMAIL CONFIRMACIÓN TODOS FIRMARON #}
         <div class="card shadow mb-4">
-          <div class="card-header bg-light">
+          <div class="card-header">
             <h5 class="mb-0"><i class="fas fa-check-double me-2 text-success"></i> {{ trans('firmadoc-admin-confirm-email') }}</h5>
           </div>
           <div class="card-body">
@@ -429,7 +437,7 @@
               <small class="text-muted fw-bold">{{ trans('firmadoc-admin-available-vars-wa') }}</small><br>
               <div class="mt-1">
                 {% for var in ['{{cliente}}','{{empresa}}','{{tipo_doc}}','{{codigo_doc}}','{{link_documento}}','{{importe}}'] %}
-                  <span class="badge bg-success me-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
+                  <span class="badge bg-success me-1 mb-1 var-copiable font-monospace" style="cursor:pointer" data-var="{{ var }}">{{ var }}</span>
                 {% endfor %}
               </div>
               <small class="text-muted mt-1 d-block">{{ trans('firmadoc-admin-confirm-link-note') | raw }}</small>
