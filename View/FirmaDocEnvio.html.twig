@@ -1,0 +1,126 @@
+{#
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ *
+ * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
+ * @copyright 2025-2026 Francisco José Matías Olivares
+ * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
+ * @version   1.4
+ * @link      https://creativoz.com
+#}
+{% set firma = fsc.getModel() %}
+
+{% if firma.id is empty %}
+<div class="p-4 text-muted text-center">{{ trans('no-data') }}</div>
+{% else %}
+<div class="p-3">
+
+  {# Estado, con lo que importa de cada uno #}
+  <div class="alert alert-{% if firma.estado == 'firmado' %}success{% elseif firma.estado == 'pendiente' %}warning{% else %}secondary{% endif %} py-2">
+    {% if firma.estado == 'firmado' %}
+      <i class="fas fa-check-circle mr-1"></i>
+      <strong>{{ trans('firmadoc-badge-signed') }}</strong>
+      &middot; {{ trans('firmadoc-sign-date') }}: {{ firma.fecha_firma }}
+    {% elseif firma.estado == 'pendiente' %}
+      <i class="fas fa-clock mr-1"></i>
+      <strong>{{ trans('firmadoc-badge-pending') }}</strong>
+      &middot; {{ trans('firmadoc-send-expires') }}: {{ firma.fecha_expiracion }}
+    {% else %}
+      <i class="fas fa-info-circle mr-1"></i>
+      <strong>{{ firma.estado }}</strong>
+    {% endif %}
+  </div>
+
+  {# Enlace de firma: solo tiene sentido mientras se pueda firmar #}
+  {% if firma.estado == 'pendiente' %}
+  <div class="form-group mb-3">
+    <label class="small text-muted mb-1">{{ trans('firmadoc-send-sign-link') }}</label>
+    <div class="input-group">
+      <input type="text" class="form-control" id="enlaceFirmaFicha" readonly value="{{ fsc.enlaceFirma }}">
+      <div class="input-group-append">
+        <button class="btn btn-outline-secondary" type="button"
+                onclick="copiarCampo('enlaceFirmaFicha')" title="{{ trans('copy') }}">
+          <i class="fas fa-copy"></i>
+        </button>
+        <a href="{{ fsc.enlaceFirma }}" target="_blank" rel="noopener"
+           class="btn btn-outline-primary" title="{{ trans('firmadoc-open-new-tab') }}">
+          <i class="fas fa-external-link-alt"></i>
+        </a>
+        {% if fsc.linkWhatsApp %}
+        <a href="{{ fsc.linkWhatsApp }}" target="_blank" rel="noopener"
+           class="btn btn-success" title="{{ trans('firmadoc-send-via-whatsapp') }}">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+        {% endif %}
+        <form method="post" style="display:contents">
+          {{ formToken() | raw }}
+          <input type="hidden" name="activetab" value="FirmaDocEnvio">
+          <input type="hidden" name="code" value="{{ firma.id }}">
+          <input type="hidden" name="action" value="firmadoc-reenviar">
+          <button type="submit" class="btn btn-primary" title="{{ trans('firmadoc-resend-email') }}">
+            <i class="fas fa-envelope"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+    {% if not fsc.linkWhatsApp %}
+    <small class="form-text text-muted">
+      <i class="fab fa-whatsapp mr-1"></i>{{ trans('firmadoc-no-phone-no-whatsapp') }}
+    </small>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# Documento firmado: descargar y volver a enviar #}
+  {% if firma.estado == 'firmado' %}
+  <div class="form-group mb-3">
+    <label class="small text-muted mb-1">{{ trans('firmadoc-signed-documents') }}</label>
+    <div>
+      <a href="{{ fsc.enlaceDocumento }}" target="_blank" rel="noopener" class="btn btn-success mr-1">
+        <i class="fas fa-file-download mr-1"></i>{{ trans('firmadoc-download-signed') }}
+      </a>
+      <form method="post" style="display:inline-block">
+        {{ formToken() | raw }}
+        <input type="hidden" name="activetab" value="FirmaDocEnvio">
+        <input type="hidden" name="code" value="{{ firma.id }}">
+        <input type="hidden" name="action" value="firmadoc-enviar-firmado">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-envelope mr-1"></i>{{ trans('firmadoc-email-signed') }}
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Verificación pública: el código es lo que se teclea en el portal #}
+  {% if firma.codigo_verificacion %}
+  <div class="form-group mb-0">
+    <label class="small text-muted mb-1">{{ trans('firmadoc-verification-code') }}</label>
+    <div class="input-group">
+      <input type="text" class="form-control" id="codigoVerifFicha" readonly
+             value="{{ firma.codigo_verificacion }}">
+      <div class="input-group-append">
+        <button class="btn btn-outline-secondary" type="button"
+                onclick="copiarCampo('codigoVerifFicha')" title="{{ trans('copy') }}">
+          <i class="fas fa-copy"></i>
+        </button>
+        <a href="{{ fsc.enlaceVerificacion }}" target="_blank" rel="noopener"
+           class="btn btn-outline-primary" title="{{ trans('firmadoc-verify-header') }}">
+          <i class="fas fa-shield-alt"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function copiarCampo(id) {
+    var campo = document.getElementById(id);
+    if (!campo) return;
+    campo.select();
+    campo.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+}
+</script>
+{% endif %}

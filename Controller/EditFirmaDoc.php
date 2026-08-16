@@ -22,6 +22,7 @@ use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPdfUnir;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocReenvio;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
+use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
 
 /**
  * Ficha de una solicitud de firma: sus datos, los firmantes y el historial de envíos.
@@ -53,6 +54,12 @@ class EditFirmaDoc extends EditController
         // su huella y sus firmantes.
         $this->views[$this->getMainViewName()]->setSettings('btnNew', false);
 
+        // El enlace de firma y sus botones no caben en el XMLView —la fila de cabecera
+        // solo admite grupos de widgets, no un input con botones—, así que van en una
+        // vista HTML propia, que con las pestañas abajo queda justo bajo los datos.
+        $this->addHtmlView('FirmaDocEnvio', 'FirmaDocEnvio', 'FirmaDoc',
+            'firmadoc-send-to-client', 'fas fa-paper-plane');
+
         $this->addListView('ListFirmaDocFirmante', 'FirmaDocFirmante', 'firmadoc-signers', 'fas fa-users')
             ->addOrderBy(['orden'], 'order', 1)
             ->setSettings('btnNew', false)
@@ -69,6 +76,10 @@ class EditFirmaDoc extends EditController
         $id = $this->getViewModelValue($this->getMainViewName(), 'id');
 
         switch ($viewName) {
+            case 'FirmaDocEnvio':
+                // Solo necesita el registro principal, que ya está cargado
+                break;
+
             case 'ListFirmaDocFirmante':
             case 'ListFirmaDocReenvio':
                 if (empty($id)) {
@@ -146,6 +157,7 @@ class EditFirmaDoc extends EditController
         $this->enlaceFirma = FirmaDocUrl::firma($firma->token);
         $this->enlaceVerificacion = FirmaDocUrl::verificacion($firma->codigo_verificacion ?? '');
         $this->enlaceDocumento = $this->enlaceFirma . '&action=ver_pdf';
+        $this->linkWhatsApp = $this->construirLinkWhatsApp($firma);
     }
 
     protected function execPreviousAction($action)
@@ -172,6 +184,42 @@ class EditFirmaDoc extends EditController
         }
 
         return parent::execPreviousAction($action);
+    }
+
+    /**
+     * Enlace de wa.me con el mensaje de la plantilla ya sustituido.
+     * Cadena vacía si la solicitud no tiene teléfono.
+     */
+    private function construirLinkWhatsApp(FirmaDoc $firma): string
+    {
+        $telefono = preg_replace('/[^0-9+]/', '', (string) ($firma->telefono_cliente ?? ''));
+        if (empty($telefono)) {
+            return '';
+        }
+
+        $config = FirmaDocConfig::getConfig();
+        $documento = FirmaDocDocumento::cargar($firma->tipo_doc, (int) $firma->id_doc);
+
+        $texto = $config->reemplazarVariables($config->whatsapp_mensaje ?? '', [
+            'cliente' => $firma->getDestinatario(),
+            'empresa' => FirmaDocMailer::getNombreEmpresaPublic($firma->esExterno() ? null : $documento),
+            'tipo_doc' => $firma->esExterno()
+                ? Tools::lang()->trans('firmadoc-type-external')
+                : ucfirst((string) $firma->tipo_doc),
+            'codigo_doc' => $firma->esExterno() ? $firma->getTitulo() : (string) $firma->codigo_doc,
+            'link_firma' => FirmaDocUrl::firma($firma->token),
+            'fecha_expiracion' => $firma->fecha_expiracion ?? '',
+            'importe' => '',
+        ]);
+
+        // Se conservan acentos y emojis: solo se codifica lo que la URL no admite
+        $codificado = implode('%0A', array_map(function ($linea) {
+            return preg_replace_callback('/[^\p{L}\p{N}\p{P}\p{S}\p{Zs}]/u', function ($m) {
+                return rawurlencode($m[0]);
+            }, $linea);
+        }, preg_split('/\r\n|\r|\n/', $texto)));
+
+        return 'https://wa.me/' . ltrim($telefono, '+') . '?text=' . $codificado;
     }
 
     /**
@@ -388,4 +436,7 @@ class EditFirmaDoc extends EditController
 
     /** @var string */
     public $enlaceDocumento = '';
+
+    /** @var string Enlace de WhatsApp con el mensaje montado; vacío si no hay teléfono */
+    public $linkWhatsApp = '';
 }
