@@ -55,6 +55,10 @@ class FirmaDocClienteExtension
 
             $campo = $this->getModelClassName() === 'Proveedor' ? 'codproveedor' : 'codcliente';
             $view->loadData('', [new DataBaseWhere($campo, $codigo)]);
+
+            // El botón «+» del listado se construye con el url('new') de este modelo:
+            // dejándole el código, la pantalla de subida llega con el tercero elegido.
+            $view->model->{$campo} = $codigo;
         };
     }
 }

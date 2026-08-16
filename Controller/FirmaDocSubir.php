@@ -60,6 +60,15 @@ class FirmaDocSubir extends Controller
     /** @var string Enlace de WhatsApp con el mensaje ya montado, vacío si no hay teléfono */
     public $linkWhatsApp = '';
 
+    /** @var string Cliente que llega preseleccionado desde su ficha */
+    public $codclienteSel = '';
+
+    /** @var string Proveedor que llega preseleccionado desde su ficha */
+    public $codproveedorSel = '';
+
+    /** @var string Enlace de vuelta a la ficha de la que se vino */
+    public $volverA = '';
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
@@ -80,6 +89,15 @@ class FirmaDocSubir extends Controller
             $this->actionSubir();
         } elseif ($accion === 'reenviar') {
             $this->actionReenviar();
+        }
+
+        // Si se llega desde la ficha de un tercero, viene ya elegido y con vuelta
+        $this->codclienteSel = $this->request->get('codcliente', '');
+        $this->codproveedorSel = $this->request->get('codproveedor', '');
+        if (!empty($this->codclienteSel)) {
+            $this->volverA = 'EditCliente?code=' . rawurlencode($this->codclienteSel);
+        } elseif (!empty($this->codproveedorSel)) {
+            $this->volverA = 'EditProveedor?code=' . rawurlencode($this->codproveedorSel);
         }
 
         $this->clientes = (new \FacturaScripts\Core\Model\Cliente())

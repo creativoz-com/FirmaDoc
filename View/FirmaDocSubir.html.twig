@@ -7,13 +7,18 @@
  * @version   1.4
  * @link      https://creativoz.com
 #}
-{% extends "Master/MenuTemplate.html.twig" %}
+{% extends "Master/MenuBgTemplate.html.twig" %}
 
 {% block body %}
-{{ parent() }}
 <div class="container-fluid mt-4 mb-5">
   <div class="row justify-content-center">
     <div class="col-lg-9">
+
+      {% if fsc.volverA %}
+      <a href="{{ fsc.volverA }}" class="btn btn-sm btn-outline-secondary mb-3">
+        <i class="fas fa-arrow-left mr-1"></i>{{ trans('back') }}
+      </a>
+      {% endif %}
 
       {% if fsc.mensaje %}
       <div class="alert alert-{{ fsc.mensajeTipo }}">
@@ -98,7 +103,7 @@
                         onchange="elegirDeLista(this, 'buscar-cliente')">
                   <option value="">{{ trans('none') }}</option>
                   {% for c in fsc.clientes %}
-                  <option value="{{ c.codcliente }}">{{ c.nombre }}</option>
+                  <option value="{{ c.codcliente }}"{% if fsc.codclienteSel == c.codcliente %} selected{% endif %}>{{ c.nombre }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -111,7 +116,7 @@
                         onchange="elegirDeLista(this, 'buscar-proveedor')">
                   <option value="">{{ trans('none') }}</option>
                   {% for p in fsc.proveedores %}
-                  <option value="{{ p.codproveedor }}">{{ p.nombre }}</option>
+                  <option value="{{ p.codproveedor }}"{% if fsc.codproveedorSel == p.codproveedor %} selected{% endif %}>{{ p.nombre }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -272,5 +277,14 @@ function copiarEnlace() {
 }
 
 anadirFirmante();
+
+// Si se llega desde la ficha de un tercero ya viene elegido: se refleja en el
+// buscador para que se vea de un vistazo con quién se está trabajando.
+['codcliente', 'codproveedor'].forEach(function (id) {
+    var select = document.getElementById(id);
+    if (!select || !select.value) return;
+    var buscador = document.getElementById(id === 'codcliente' ? 'buscar-cliente' : 'buscar-proveedor');
+    if (buscador) buscador.value = select.options[select.selectedIndex].text;
+});
 </script>
 {% endblock %}
