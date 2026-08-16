@@ -1,0 +1,274 @@
+{#
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ *
+ * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
+ * @copyright 2025-2026 Francisco José Matías Olivares
+ * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
+ * @version   1.4
+ * @link      https://creativoz.com
+ *
+ * Formulario de envío a firma de un PDF externo.
+ *
+ * Vive en un bloque aparte porque se pinta en dos sitios: la pantalla propia del menú
+ * y la pestaña «Enviar a firma» de la ficha de un cliente o un proveedor. En la ficha
+ * el tercero ya está decidido, así que allí no se ofrece elegirlo.
+ *
+ * Parámetros:
+ *   terceroFijo    bool    el tercero viene dado por la ficha y no se puede cambiar
+ *   campoTercero   string  'codcliente' o 'codproveedor'
+ *   codigoTercero  string  código del tercero fijado
+ *   nombreTercero  string  su nombre, para enseñarlo
+ *   clientes       array   solo si no es fijo
+ *   proveedores    array   solo si no es fijo
+ *   codclienteSel  string  cliente que llega preseleccionado
+ *   codproveedorSel string proveedor que llega preseleccionado
+ *   maxSubida      int     tope de subida del servidor, en MB
+ *   volver         string  a dónde regresar al terminar
+ #}
+<form method="post" action="{{ asset('FirmaDocSubir') }}" enctype="multipart/form-data">
+  {{ formToken() | raw }}
+  <input type="hidden" name="action" value="subir">
+  {% if volver is defined and volver %}
+  <input type="hidden" name="volver" value="{{ volver }}">
+  {% endif %}
+
+  <div class="card shadow mb-3">
+    <div class="card-body">
+      <h3 class="h4 mb-3">
+        <i class="fas fa-file-signature fa-fw me-2"></i>{{ trans('firmadoc-upload-document') }}
+      </h3>
+
+      {# 1. De qué va el envío #}
+      <div class="mb-3">
+        <label class="mb-0" for="titulo">{{ trans('firmadoc-upload-doc-title') }}</label>
+        <input type="text" name="titulo" id="titulo" class="form-control" maxlength="200"
+               placeholder="{{ trans('firmadoc-upload-title-placeholder') }}">
+      </div>
+
+      {# 2. A quién va. Asociarlo es lo que permite luego encontrarlo desde la
+            ficha del tercero y filtrar el listado general. #}
+      {% if terceroFijo %}
+      <div class="mb-3">
+        <label class="mb-0">{{ trans(campoTercero == 'codproveedor' ? 'supplier' : 'customer') }}</label>
+        <input type="hidden" name="{{ campoTercero }}" value="{{ codigoTercero }}">
+        <input type="text" class="form-control" value="{{ nombreTercero }}" readonly>
+      </div>
+      {% else %}
+      <div class="row">
+        {# Mismo patrón que la cabecera de los documentos de venta: campo de solo
+           lectura con el nombre y un botón que abre el buscador. #}
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label class="mb-0">{{ trans('customer') }}</label>
+            <input type="hidden" name="codcliente" id="codcliente" value="{{ codclienteSel }}">
+            <div class="input-group">
+              <input type="text" class="form-control" id="nombreCliente" readonly
+                     placeholder="{{ trans('none') }}"
+                     value="{% for c in clientes %}{% if c.codcliente == codclienteSel %}{{ c.nombre }}{% endif %}{% endfor %}">
+              <button class="btn btn-outline-secondary" type="button" title="{{ trans('customers') }}"
+                      onclick="firmadocAbrirBuscador('Cliente')">
+                <i class="fas fa-pen"></i>
+              </button>
+              <button class="btn btn-outline-secondary" type="button" title="{{ trans('clear') }}"
+                      onclick="firmadocLimpiarTercero('Cliente')">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label class="mb-0">{{ trans('supplier') }}</label>
+            <input type="hidden" name="codproveedor" id="codproveedor" value="{{ codproveedorSel }}">
+            <div class="input-group">
+              <input type="text" class="form-control" id="nombreProveedor" readonly
+                     placeholder="{{ trans('none') }}"
+                     value="{% for p in proveedores %}{% if p.codproveedor == codproveedorSel %}{{ p.nombre }}{% endif %}{% endfor %}">
+              <button class="btn btn-outline-secondary" type="button" title="{{ trans('suppliers') }}"
+                      onclick="firmadocAbrirBuscador('Proveedor')">
+                <i class="fas fa-pen"></i>
+              </button>
+              <button class="btn btn-outline-secondary" type="button" title="{{ trans('clear') }}"
+                      onclick="firmadocLimpiarTercero('Proveedor')">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <hr class="my-3">
+
+      {# 3. Los ficheros. Lo que se firma y lo que solo acompaña van en campos
+            distintos porque la diferencia es jurídica. #}
+      <div class="mb-3">
+        <label class="mb-0" for="documentos">
+          {{ trans('firmadoc-upload-file') }} <span class="text-danger">*</span>
+        </label>
+        <input type="file" name="documentos[]" id="documentos" accept="application/pdf"
+               class="form-control" multiple required>
+        <small class="form-text text-muted">
+          {{ trans('firmadoc-upload-help') }}
+          {{ trans('help-server-accepts-filesize', {'%size%': maxSubida}) }}
+        </small>
+      </div>
+
+      <div class="mb-0">
+        <label class="mb-0" for="anexos">{{ trans('firmadoc-annexes') }}</label>
+        <input type="file" name="anexos[]" id="anexos" accept="application/pdf"
+               class="form-control" multiple>
+        <small class="form-text text-muted">{{ trans('firmadoc-annexes-help') }}</small>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card shadow mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+        <h3 class="h4 mb-0"><i class="fas fa-users fa-fw me-2"></i>{{ trans('firmadoc-signers') }}</h3>
+        <button type="button" class="btn btn-outline-primary" onclick="anadirFirmante()">
+          <i class="fas fa-plus me-1"></i>{{ trans('firmadoc-add-signer') }}
+        </button>
+      </div>
+
+      <div id="lista-firmantes"></div>
+
+      <div class="mt-3 mb-0" id="grupo-modo" style="display:none;">
+        <label class="mb-0">{{ trans('firmadoc-multisign-mode') }}</label>
+        <select name="modo_multifirma" class="form-select" style="max-width:280px;">
+          <option value="paralelo">{{ trans('firmadoc-mode-parallel') }}</option>
+          <option value="secuencial">{{ trans('firmadoc-mode-sequential') }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary px-4">
+    <i class="fas fa-paper-plane me-2"></i>{{ trans('firmadoc-upload-send') }}
+  </button>
+</form>
+
+{% if not terceroFijo %}
+{# ── BUSCADORES DE TERCERO ─── #}
+{% for tipo in ['Cliente', 'Proveedor'] %}
+<div class="modal" id="firmadocModal{{ tipo }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-users fa-fw me-1"></i>
+          {{ trans(tipo == 'Cliente' ? 'customers' : 'suppliers') }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="p-3">
+          <div class="input-group">
+            <input type="text" id="firmadocBuscar{{ tipo }}" class="form-control"
+                   placeholder="{{ trans('search') }}" autocomplete="off"
+                   oninput="firmadocFiltrar('{{ tipo }}', this.value)">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+          </div>
+        </div>
+        <table class="table table-hover mb-0" id="firmadocTabla{{ tipo }}">
+          {% for t in (tipo == 'Cliente' ? clientes : proveedores) %}
+          {% set codigo = tipo == 'Cliente' ? t.codcliente : t.codproveedor %}
+          <tr onclick="firmadocElegirTercero('{{ tipo }}', '{{ codigo|e('js') }}', '{{ t.nombre|e('js') }}'); return false;"
+              style="cursor:pointer">
+            <td><i class="fas fa-user fa-fw"></i> {{ t.nombre }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<script>
+var contadorFirmantes = 0;
+
+function anadirFirmante(nombre, email, telefono) {
+    var i = contadorFirmantes++;
+    var fila = document.createElement('div');
+    fila.className = 'row g-2 align-items-end mb-2 fila-firmante';
+    fila.innerHTML =
+        '<div class="col-md-4">' +
+          '<label class="mb-0">{{ trans('firmadoc-signer-name') }}</label>' +
+          '<input type="text" class="form-control" name="firmantes[' + i + '][nombre]">' +
+        '</div>' +
+        '<div class="col-md-4">' +
+          '<label class="mb-0">{{ trans('email') }} <span class="text-danger">*</span></label>' +
+          '<input type="email" class="form-control" name="firmantes[' + i + '][email]" required>' +
+        '</div>' +
+        '<div class="col-md-3">' +
+          '<label class="mb-0">{{ trans('phone') }}</label>' +
+          '<input type="text" class="form-control" name="firmantes[' + i + '][telefono]">' +
+        '</div>' +
+        '<div class="col-md-1">' +
+          '<button type="button" class="btn btn-outline-danger w-100" onclick="quitarFirmante(this)">' +
+            '<i class="fas fa-times"></i>' +
+          '</button>' +
+        '</div>';
+    document.getElementById('lista-firmantes').appendChild(fila);
+
+    if (nombre) fila.querySelector('[name$="[nombre]"]').value = nombre;
+    if (email) fila.querySelector('[name$="[email]"]').value = email;
+    if (telefono) fila.querySelector('[name$="[telefono]"]').value = telefono;
+
+    actualizarModo();
+}
+
+function quitarFirmante(boton) {
+    var filas = document.querySelectorAll('.fila-firmante');
+    if (filas.length <= 1) return;   // siempre tiene que quedar uno
+    boton.closest('.fila-firmante').remove();
+    actualizarModo();
+}
+
+// El modo solo tiene sentido a partir del segundo firmante
+function actualizarModo() {
+    var n = document.querySelectorAll('.fila-firmante').length;
+    document.getElementById('grupo-modo').style.display = n > 1 ? 'block' : 'none';
+}
+
+{% if not terceroFijo %}
+// Buscador de terceros: mismo gesto que en los documentos de venta.
+function firmadocAbrirBuscador(tipo) {
+    var el = document.getElementById('firmadocModal' + tipo);
+    if (!el) return;
+    new bootstrap.Modal(el).show();
+    var buscador = document.getElementById('firmadocBuscar' + tipo);
+    if (buscador) setTimeout(function () { buscador.focus(); }, 300);
+}
+
+function firmadocFiltrar(tipo, texto) {
+    var buscado = texto.trim().toLowerCase();
+    var filas = document.querySelectorAll('#firmadocTabla' + tipo + ' tr');
+    filas.forEach(function (fila) {
+        fila.style.display = fila.textContent.toLowerCase().indexOf(buscado) === -1 ? 'none' : '';
+    });
+}
+
+// Cliente y proveedor se excluyen: el documento va a un tercero, no a dos.
+function firmadocElegirTercero(tipo, codigo, nombre) {
+    document.getElementById(tipo == 'Cliente' ? 'codcliente' : 'codproveedor').value = codigo;
+    document.getElementById('nombre' + tipo).value = nombre;
+    firmadocLimpiarTercero(tipo == 'Cliente' ? 'Proveedor' : 'Cliente');
+
+    var el = document.getElementById('firmadocModal' + tipo);
+    var modal = bootstrap.Modal.getInstance(el);
+    if (modal) modal.hide();
+}
+
+function firmadocLimpiarTercero(tipo) {
+    document.getElementById(tipo == 'Cliente' ? 'codcliente' : 'codproveedor').value = '';
+    document.getElementById('nombre' + tipo).value = '';
+}
+{% endif %}
+
+anadirFirmante();
+</script>

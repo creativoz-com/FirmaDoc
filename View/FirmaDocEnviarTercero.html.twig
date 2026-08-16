@@ -1,0 +1,26 @@
+{#
+ * This file is part of FirmaDoc plugin for FacturaScripts.
+ *
+ * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
+ * @copyright 2025-2026 Francisco José Matías Olivares
+ * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
+ * @version   1.4
+ * @link      https://creativoz.com
+ *
+ * Pestaña «Enviar a firma» dentro de la ficha de un cliente o un proveedor.
+ *
+ * Es el mismo formulario que la pantalla del menú, pero aquí el tercero ya está
+ * decidido, así que ni se pregunta ni se puede cambiar. Vive dentro de la ficha para
+ * no perder su menú lateral: salir a una pantalla suelta para volver después obligaba
+ * a rehacer el camino.
+ #}
+<div class="container-fluid pt-3">
+  {% include 'FirmaDocFormulario.html.twig' with {
+    'terceroFijo': true,
+    'campoTercero': view.settings.firmadocCampo,
+    'codigoTercero': view.settings.firmadocCodigo,
+    'nombreTercero': view.settings.firmadocNombre,
+    'maxSubida': view.settings.firmadocMaxSubida,
+    'volver': view.settings.firmadocVolver
+  } only %}
+</div>

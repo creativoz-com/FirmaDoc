@@ -13,6 +13,7 @@ namespace FacturaScripts\Plugins\FirmaDoc\Controller;
 use FacturaScripts\Core\Base\Controller;
 use FacturaScripts\Core\Model\AttachedFile;
 use FacturaScripts\Core\Tools;
+use FacturaScripts\Core\UploadedFile;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
@@ -69,6 +70,9 @@ class FirmaDocSubir extends Controller
     /** @var string Enlace de vuelta a la ficha de la que se vino */
     public $volverA = '';
 
+    /** @var int Tope real de subida, en MB: el menor entre el del plugin y el del servidor */
+    public $maxSubida = 0;
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
@@ -105,11 +109,21 @@ class FirmaDocSubir extends Controller
         $this->proveedores = (new \FacturaScripts\Core\Model\Proveedor())
             ->all([], ['nombre' => 'ASC'], 0, 0);
 
+        // De nada sirve anunciar los 32 MB del servidor si el plugin corta en 20:
+        // el aviso tiene que decir lo que de verdad se va a admitir.
+        $this->maxSubida = (int) floor(min(self::MAX_BYTES, UploadedFile::getMaxFilesize()) / 1024 / 1024);
+
         $this->setTemplate('FirmaDocSubir');
     }
 
     private function actionSubir(): void
     {
+        // Subir un documento y mandarlo a firmar en nombre de la empresa no puede
+        // dispararse desde un formulario ajeno.
+        if (false === $this->validateFormToken()) {
+            return;
+        }
+
         // Los que se firman y los que solo acompañan llegan en dos campos distintos:
         // la diferencia es jurídica, así que conviene que sea explícita al subirlos.
         $aFirmar = $this->request->files->getArray('documentos');
@@ -243,6 +257,13 @@ class FirmaDocSubir extends Controller
             ? Tools::lang()->trans('firmadoc-upload-created-not-sent')
             : Tools::lang()->trans('firmadoc-upload-created', ['%emails%' => implode(', ', $this->enviadoA)]);
         $this->mensajeTipo = empty($this->enviadoA) ? 'warning' : 'success';
+
+        // Enviado desde la pestaña de una ficha, el sitio donde continuar es la ficha
+        // de la solicitud recién creada: allí están el enlace, el estado y los reenvíos.
+        if ($this->request->request->get('volver', '')) {
+            Tools::log()->notice($this->mensaje);
+            $this->redirect('EditFirmaDoc?code=' . $firma->id);
+        }
     }
 
     /**
@@ -290,6 +311,10 @@ class FirmaDocSubir extends Controller
      */
     private function actionReenviar(): void
     {
+        if (false === $this->validateFormToken()) {
+            return;
+        }
+
         $id = (int) $this->request->request->get('firmadoc_id', 0);
         $firma = new FirmaDoc();
         if (empty($id) || !$firma->loadFromCode($id)) {

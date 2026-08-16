@@ -197,6 +197,15 @@ class EditFirmaDoc extends EditController
             return '';
         }
 
+        // Ya firmado, el enlace sigue valiendo pero lleva al documento firmado: pedirle
+        // otra vez que firme sonaría a error, así que el texto es el que corresponde.
+        if ($firma->estado === FirmaDoc::ESTADO_FIRMADO) {
+            $texto = Tools::lang()->trans('firmadoc-whatsapp-signed', [
+                '%link%' => FirmaDocUrl::firma($firma->token),
+            ]);
+            return 'https://wa.me/' . ltrim($telefono, '+') . '?text=' . rawurlencode($texto);
+        }
+
         $config = FirmaDocConfig::getConfig();
         $documento = FirmaDocDocumento::cargar($firma->tipo_doc, (int) $firma->id_doc);
 

@@ -15,8 +15,8 @@
     <div class="col-lg-9">
 
       {% if fsc.volverA %}
-      <a href="{{ fsc.volverA }}" class="btn btn-sm btn-outline-secondary mb-3">
-        <i class="fas fa-arrow-left mr-1"></i>{{ trans('back') }}
+      <a href="{{ asset(fsc.volverA) }}" class="btn btn-outline-secondary mb-3">
+        <i class="fas fa-arrow-left me-1"></i>{{ trans('back') }}
       </a>
       {% endif %}
 
@@ -28,44 +28,43 @@
 
       {# Resultado: enlace listo para copiar #}
       {% if fsc.firmaCreada %}
-      <div class="card shadow-sm mb-4">
+      <div class="card shadow mb-3">
         <div class="card-body">
-          <h5 class="card-title mb-3">
-            <i class="fas fa-check-circle text-success mr-2"></i>{{ fsc.firmaCreada.getTitulo() }}
-          </h5>
-          <label class="small text-muted mb-1">{{ trans('firmadoc-send-sign-link') }}</label>
+          <h3 class="h4 mb-3">
+            <i class="fas fa-check-circle text-success me-2"></i>{{ fsc.firmaCreada.getTitulo() }}
+          </h3>
+          <label class="mb-0">{{ trans('firmadoc-send-sign-link') }}</label>
           {# Mismos botones que en la pestaña de un documento: copiar, abrir,
              WhatsApp y reenviar por email. #}
           <div class="input-group mb-2">
             <input type="text" class="form-control" id="enlace-firma" readonly value="{{ fsc.linkFirma }}">
-            <div class="input-group-append">
-              <button class="btn btn-outline-secondary" type="button" onclick="copiarEnlace()"
-                      title="{{ trans('copy') }}">
-                <i class="fas fa-copy"></i>
+            <button class="btn btn-outline-secondary" type="button" onclick="copiarEnlace()"
+                    title="{{ trans('copy') }}">
+              <i class="fas fa-copy"></i>
+            </button>
+            <a href="{{ fsc.linkFirma }}" target="_blank" rel="noopener"
+               class="btn btn-outline-primary" title="{{ trans('firmadoc-open-new-tab') }}">
+              <i class="fas fa-external-link-alt"></i>
+            </a>
+            {% if fsc.linkWhatsApp %}
+            <a href="{{ fsc.linkWhatsApp }}" target="_blank" rel="noopener"
+               class="btn btn-success" title="{{ trans('firmadoc-send-via-whatsapp') }}">
+              <i class="fab fa-whatsapp"></i>
+            </a>
+            {% endif %}
+            <form method="post" style="display:contents">
+              {{ formToken() | raw }}
+              <input type="hidden" name="action" value="reenviar">
+              <input type="hidden" name="firmadoc_id" value="{{ fsc.firmaCreada.id }}">
+              <button type="submit" class="btn btn-primary"
+                      title="{{ trans('firmadoc-resend-email') }}">
+                <i class="fas fa-envelope"></i>
               </button>
-              <a href="{{ fsc.linkFirma }}" target="_blank" rel="noopener"
-                 class="btn btn-outline-primary" title="{{ trans('firmadoc-open-new-tab') }}">
-                <i class="fas fa-external-link-alt"></i>
-              </a>
-              {% if fsc.linkWhatsApp %}
-              <a href="{{ fsc.linkWhatsApp }}" target="_blank" rel="noopener"
-                 class="btn btn-success" title="{{ trans('firmadoc-send-via-whatsapp') }}">
-                <i class="fab fa-whatsapp"></i>
-              </a>
-              {% endif %}
-              <form method="post" style="display:contents">
-                <input type="hidden" name="action" value="reenviar">
-                <input type="hidden" name="firmadoc_id" value="{{ fsc.firmaCreada.id }}">
-                <button type="submit" class="btn btn-primary"
-                        title="{{ trans('firmadoc-resend-email') }}">
-                  <i class="fas fa-envelope"></i>
-                </button>
-              </form>
-            </div>
+            </form>
           </div>
           {% if not fsc.linkWhatsApp %}
           <p class="small text-muted mb-2">
-            <i class="fab fa-whatsapp mr-1"></i>{{ trans('firmadoc-no-phone-no-whatsapp') }}
+            <i class="fab fa-whatsapp me-1"></i>{{ trans('firmadoc-no-phone-no-whatsapp') }}
           </p>
           {% endif %}
           <p class="small text-muted mb-0">
@@ -75,216 +74,26 @@
       </div>
       {% endif %}
 
-      <form method="post" enctype="multipart/form-data">
-        <input type="hidden" name="action" value="subir">
-
-        <div class="card shadow-sm mb-3">
-          <div class="card-header">
-            <i class="fas fa-file-signature mr-2"></i>{{ trans('firmadoc-upload-document') }}
-          </div>
-          <div class="card-body">
-
-            {# 1. De qué va el envío #}
-            <div class="form-group">
-              <label for="titulo">{{ trans('firmadoc-upload-doc-title') }}</label>
-              <input type="text" name="titulo" id="titulo" class="form-control" maxlength="200"
-                     placeholder="{{ trans('firmadoc-upload-title-placeholder') }}">
-            </div>
-
-            {# 2. A quién va. Asociarlo es lo que permite luego encontrarlo desde la
-                  ficha del tercero y filtrar el listado general. #}
-            <div class="form-row">
-              <div class="form-group col-md-6">
-                <label for="buscar-cliente">{{ trans('customer') }}</label>
-                <input type="search" id="buscar-cliente" class="form-control form-control-sm mb-1"
-                       placeholder="{{ trans('search') }}..." autocomplete="off"
-                       oninput="filtrarLista('codcliente', this.value)">
-                <select name="codcliente" id="codcliente" class="form-control" size="1"
-                        onchange="elegirDeLista(this, 'buscar-cliente')">
-                  <option value="">{{ trans('none') }}</option>
-                  {% for c in fsc.clientes %}
-                  <option value="{{ c.codcliente }}"{% if fsc.codclienteSel == c.codcliente %} selected{% endif %}>{{ c.nombre }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="form-group col-md-6">
-                <label for="buscar-proveedor">{{ trans('supplier') }}</label>
-                <input type="search" id="buscar-proveedor" class="form-control form-control-sm mb-1"
-                       placeholder="{{ trans('search') }}..." autocomplete="off"
-                       oninput="filtrarLista('codproveedor', this.value)">
-                <select name="codproveedor" id="codproveedor" class="form-control" size="1"
-                        onchange="elegirDeLista(this, 'buscar-proveedor')">
-                  <option value="">{{ trans('none') }}</option>
-                  {% for p in fsc.proveedores %}
-                  <option value="{{ p.codproveedor }}"{% if fsc.codproveedorSel == p.codproveedor %} selected{% endif %}>{{ p.nombre }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-
-            <hr class="my-3">
-
-            {# 3. Los ficheros. Lo que se firma y lo que solo acompaña van en campos
-                  distintos porque la diferencia es jurídica. #}
-            <div class="form-group">
-              <label for="documentos">
-                {{ trans('firmadoc-upload-file') }} <span class="text-danger">*</span>
-              </label>
-              <input type="file" name="documentos[]" id="documentos" accept="application/pdf"
-                     class="form-control-file" multiple required>
-              <small class="form-text text-muted">{{ trans('firmadoc-upload-help') }}</small>
-            </div>
-
-            <div class="form-group mb-0">
-              <label for="anexos">{{ trans('firmadoc-annexes') }}</label>
-              <input type="file" name="anexos[]" id="anexos" accept="application/pdf"
-                     class="form-control-file" multiple>
-              <small class="form-text text-muted">{{ trans('firmadoc-annexes-help') }}</small>
-            </div>
-
-          </div>
-        </div>
-
-        <div class="card shadow-sm mb-3">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="fas fa-users mr-2"></i>{{ trans('firmadoc-signers') }}</span>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="anadirFirmante()">
-              <i class="fas fa-plus mr-1"></i>{{ trans('firmadoc-add-signer') }}
-            </button>
-          </div>
-          <div class="card-body">
-            <div id="lista-firmantes"></div>
-
-            <div class="form-group mt-3 mb-0" id="grupo-modo" style="display:none;">
-              <label class="small">{{ trans('firmadoc-multisign-mode') }}</label>
-              <select name="modo_multifirma" class="form-control form-control-sm" style="max-width:280px;">
-                <option value="paralelo">{{ trans('firmadoc-mode-parallel') }}</option>
-                <option value="secuencial">{{ trans('firmadoc-mode-sequential') }}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary px-4">
-          <i class="fas fa-paper-plane mr-2"></i>{{ trans('firmadoc-upload-send') }}
-        </button>
-      </form>
+      {% include 'FirmaDocFormulario.html.twig' with {
+        'terceroFijo': false,
+        'clientes': fsc.clientes,
+        'proveedores': fsc.proveedores,
+        'codclienteSel': fsc.codclienteSel,
+        'codproveedorSel': fsc.codproveedorSel,
+        'maxSubida': fsc.maxSubida,
+        'volver': fsc.volverA
+      } only %}
 
     </div>
   </div>
 </div>
 
 <script>
-var contadorFirmantes = 0;
-
-function anadirFirmante(nombre, email, telefono) {
-    var i = contadorFirmantes++;
-    var fila = document.createElement('div');
-    fila.className = 'form-row align-items-end mb-2 fila-firmante';
-    fila.innerHTML =
-        '<div class="form-group col-md-4 mb-1">' +
-          '<label class="small mb-1">{{ trans('firmadoc-signer-name') }}</label>' +
-          '<input type="text" class="form-control form-control-sm" name="firmantes[' + i + '][nombre]">' +
-        '</div>' +
-        '<div class="form-group col-md-4 mb-1">' +
-          '<label class="small mb-1">{{ trans('email') }} <span class="text-danger">*</span></label>' +
-          '<input type="email" class="form-control form-control-sm" name="firmantes[' + i + '][email]" required>' +
-        '</div>' +
-        '<div class="form-group col-md-3 mb-1">' +
-          '<label class="small mb-1">{{ trans('phone') }}</label>' +
-          '<input type="text" class="form-control form-control-sm" name="firmantes[' + i + '][telefono]">' +
-        '</div>' +
-        '<div class="form-group col-md-1 mb-1">' +
-          '<button type="button" class="btn btn-sm btn-outline-danger btn-block" onclick="quitarFirmante(this)">' +
-            '<i class="fas fa-times"></i>' +
-          '</button>' +
-        '</div>';
-    document.getElementById('lista-firmantes').appendChild(fila);
-
-    if (nombre) fila.querySelector('[name$="[nombre]"]').value = nombre;
-    if (email) fila.querySelector('[name$="[email]"]').value = email;
-    if (telefono) fila.querySelector('[name$="[telefono]"]').value = telefono;
-
-    actualizarModo();
-}
-
-function quitarFirmante(boton) {
-    var filas = document.querySelectorAll('.fila-firmante');
-    if (filas.length <= 1) return;   // siempre tiene que quedar uno
-    boton.closest('.fila-firmante').remove();
-    actualizarModo();
-}
-
-// El modo solo tiene sentido a partir del segundo firmante
-function actualizarModo() {
-    var n = document.querySelectorAll('.fila-firmante').length;
-    document.getElementById('grupo-modo').style.display = n > 1 ? 'block' : 'none';
-}
-
-// Filtra las opciones del desplegable por lo que se teclea en su buscador.
-// Se guardan todas la primera vez para poder restaurarlas al borrar la búsqueda.
-var opcionesOriginales = {};
-
-function filtrarLista(idSelect, texto) {
-    var select = document.getElementById(idSelect);
-    if (!select) return;
-
-    if (!opcionesOriginales[idSelect]) {
-        opcionesOriginales[idSelect] = Array.from(select.options).map(function (o) {
-            return {valor: o.value, texto: o.text};
-        });
-    }
-
-    var buscado = texto.trim().toLowerCase();
-    var seleccionado = select.value;
-    select.innerHTML = '';
-
-    opcionesOriginales[idSelect].forEach(function (o) {
-        // La opción vacía se mantiene siempre, para poder no asociar a nadie
-        if (o.valor !== '' && buscado !== '' && o.texto.toLowerCase().indexOf(buscado) === -1) {
-            return;
-        }
-        var opt = document.createElement('option');
-        opt.value = o.valor;
-        opt.text = o.texto;
-        if (o.valor === seleccionado) opt.selected = true;
-        select.appendChild(opt);
-    });
-
-    // Con resultados se despliega para que se vea qué hay; al vaciar la búsqueda
-    // o al no quedar nada, se colapsa.
-    select.size = (buscado !== '' && select.options.length > 1)
-        ? Math.min(select.options.length, 8)
-        : 1;
-}
-
-// Al elegir en la lista desplegada se vuelve a colapsar y se escribe el nombre en
-// el buscador: sin esto el desplegable se quedaba abierto y no había forma de saber
-// si la selección había cuajado.
-function elegirDeLista(select, idBuscador) {
-    select.size = 1;
-    var buscador = document.getElementById(idBuscador);
-    if (buscador) {
-        buscador.value = select.value === '' ? '' : select.options[select.selectedIndex].text;
-    }
-}
-
 function copiarEnlace() {
     var campo = document.getElementById('enlace-firma');
     campo.select();
     campo.setSelectionRange(0, 99999);
     document.execCommand('copy');
 }
-
-anadirFirmante();
-
-// Si se llega desde la ficha de un tercero ya viene elegido: se refleja en el
-// buscador para que se vea de un vistazo con quién se está trabajando.
-['codcliente', 'codproveedor'].forEach(function (id) {
-    var select = document.getElementById(id);
-    if (!select || !select.value) return;
-    var buscador = document.getElementById(id === 'codcliente' ? 'buscar-cliente' : 'buscar-proveedor');
-    if (buscador) buscador.value = select.options[select.selectedIndex].text;
-});
 </script>
 {% endblock %}

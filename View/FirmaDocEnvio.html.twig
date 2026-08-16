@@ -8,75 +8,79 @@
  * @link      https://creativoz.com
 #}
 {% set firma = fsc.getModel() %}
+{% set estaFirmado = firma.estado == 'firmado' %}
 
 {% if firma.id is empty %}
 <div class="p-4 text-muted text-center">{{ trans('no-data') }}</div>
 {% else %}
-<div class="p-3">
+<div class="card shadow">
+  <div class="card-body">
 
   {# Estado, con lo que importa de cada uno #}
-  <div class="alert alert-{% if firma.estado == 'firmado' %}success{% elseif firma.estado == 'pendiente' %}warning{% else %}secondary{% endif %} py-2">
-    {% if firma.estado == 'firmado' %}
-      <i class="fas fa-check-circle mr-1"></i>
+  <div class="alert alert-{% if estaFirmado %}success{% elseif firma.estado == 'pendiente' %}warning{% else %}secondary{% endif %} py-2">
+    {% if estaFirmado %}
+      <i class="fas fa-check-circle me-1"></i>
       <strong>{{ trans('firmadoc-badge-signed') }}</strong>
       &middot; {{ trans('firmadoc-sign-date') }}: {{ firma.fecha_firma }}
     {% elseif firma.estado == 'pendiente' %}
-      <i class="fas fa-clock mr-1"></i>
+      <i class="fas fa-clock me-1"></i>
       <strong>{{ trans('firmadoc-badge-pending') }}</strong>
       &middot; {{ trans('firmadoc-send-expires') }}: {{ firma.fecha_expiracion }}
     {% else %}
-      <i class="fas fa-info-circle mr-1"></i>
+      <i class="fas fa-info-circle me-1"></i>
       <strong>{{ firma.estado }}</strong>
     {% endif %}
   </div>
 
-  {# Enlace de firma: solo tiene sentido mientras se pueda firmar #}
-  {% if firma.estado == 'pendiente' %}
-  <div class="form-group mb-3">
-    <label class="small text-muted mb-1">{{ trans('firmadoc-send-sign-link') }}</label>
+  {# El enlace no caduca al firmar: después lleva al documento firmado y a su
+     justificante, así que sigue siendo lo que se le pasa al cliente. #}
+  {% if firma.estado == 'pendiente' or estaFirmado %}
+  <div class="mb-3">
+    <label class="mb-0">
+      {{ estaFirmado ? trans('firmadoc-signed-doc-link') : trans('firmadoc-send-sign-link') }}
+    </label>
     <div class="input-group">
       <input type="text" class="form-control" id="enlaceFirmaFicha" readonly value="{{ fsc.enlaceFirma }}">
-      <div class="input-group-append">
-        <button class="btn btn-outline-secondary" type="button"
-                onclick="copiarCampo('enlaceFirmaFicha')" title="{{ trans('copy') }}">
-          <i class="fas fa-copy"></i>
+      <button class="btn btn-outline-secondary" type="button"
+              onclick="copiarCampo('enlaceFirmaFicha')" title="{{ trans('copy') }}">
+        <i class="fas fa-copy"></i>
+      </button>
+      <a href="{{ fsc.enlaceFirma }}" target="_blank" rel="noopener"
+         class="btn btn-outline-primary" title="{{ trans('firmadoc-open-new-tab') }}">
+        <i class="fas fa-external-link-alt"></i>
+      </a>
+      {% if fsc.linkWhatsApp %}
+      <a href="{{ fsc.linkWhatsApp }}" target="_blank" rel="noopener"
+         class="btn btn-success" title="{{ trans('firmadoc-send-via-whatsapp') }}">
+        <i class="fab fa-whatsapp"></i>
+      </a>
+      {% endif %}
+      <form method="post" style="display:contents">
+        {{ formToken() | raw }}
+        <input type="hidden" name="activetab" value="FirmaDocEnvio">
+        <input type="hidden" name="code" value="{{ firma.id }}">
+        <input type="hidden" name="action" value="{{ estaFirmado ? 'firmadoc-enviar-firmado' : 'firmadoc-reenviar' }}">
+        <button type="submit" class="btn btn-primary"
+                title="{{ estaFirmado ? trans('firmadoc-email-signed') : trans('firmadoc-resend-email') }}">
+          <i class="fas fa-envelope"></i>
         </button>
-        <a href="{{ fsc.enlaceFirma }}" target="_blank" rel="noopener"
-           class="btn btn-outline-primary" title="{{ trans('firmadoc-open-new-tab') }}">
-          <i class="fas fa-external-link-alt"></i>
-        </a>
-        {% if fsc.linkWhatsApp %}
-        <a href="{{ fsc.linkWhatsApp }}" target="_blank" rel="noopener"
-           class="btn btn-success" title="{{ trans('firmadoc-send-via-whatsapp') }}">
-          <i class="fab fa-whatsapp"></i>
-        </a>
-        {% endif %}
-        <form method="post" style="display:contents">
-          {{ formToken() | raw }}
-          <input type="hidden" name="activetab" value="FirmaDocEnvio">
-          <input type="hidden" name="code" value="{{ firma.id }}">
-          <input type="hidden" name="action" value="firmadoc-reenviar">
-          <button type="submit" class="btn btn-primary" title="{{ trans('firmadoc-resend-email') }}">
-            <i class="fas fa-envelope"></i>
-          </button>
-        </form>
-      </div>
+      </form>
     </div>
     {% if not fsc.linkWhatsApp %}
     <small class="form-text text-muted">
-      <i class="fab fa-whatsapp mr-1"></i>{{ trans('firmadoc-no-phone-no-whatsapp') }}
+      <i class="fab fa-whatsapp me-1"></i>{{ trans('firmadoc-no-phone-no-whatsapp') }}
     </small>
     {% endif %}
   </div>
   {% endif %}
 
   {# Documento firmado: descargar y volver a enviar #}
-  {% if firma.estado == 'firmado' %}
-  <div class="form-group mb-3">
-    <label class="small text-muted mb-1">{{ trans('firmadoc-signed-documents') }}</label>
+  {% if estaFirmado %}
+  <div class="mb-3">
+    <label class="mb-0">{{ trans('firmadoc-signed-documents') }}</label>
     <div>
-      <a href="{{ fsc.enlaceDocumento }}" target="_blank" rel="noopener" class="btn btn-success mr-1">
-        <i class="fas fa-file-download mr-1"></i>{{ trans('firmadoc-download-signed') }}
+      <a href="{{ fsc.enlaceDocumento }}" target="_blank" rel="noopener" class="btn btn-success me-1">
+        <i class="fas fa-file-download me-1"></i>{{ trans('firmadoc-download-signed') }}
       </a>
       <form method="post" style="display:inline-block">
         {{ formToken() | raw }}
@@ -84,7 +88,7 @@
         <input type="hidden" name="code" value="{{ firma.id }}">
         <input type="hidden" name="action" value="firmadoc-enviar-firmado">
         <button type="submit" class="btn btn-primary">
-          <i class="fas fa-envelope mr-1"></i>{{ trans('firmadoc-email-signed') }}
+          <i class="fas fa-envelope me-1"></i>{{ trans('firmadoc-email-signed') }}
         </button>
       </form>
     </div>
@@ -93,25 +97,24 @@
 
   {# Verificación pública: el código es lo que se teclea en el portal #}
   {% if firma.codigo_verificacion %}
-  <div class="form-group mb-0">
-    <label class="small text-muted mb-1">{{ trans('firmadoc-verification-code') }}</label>
+  <div class="mb-0">
+    <label class="mb-0">{{ trans('firmadoc-verification-code') }}</label>
     <div class="input-group">
       <input type="text" class="form-control" id="codigoVerifFicha" readonly
              value="{{ firma.codigo_verificacion }}">
-      <div class="input-group-append">
-        <button class="btn btn-outline-secondary" type="button"
-                onclick="copiarCampo('codigoVerifFicha')" title="{{ trans('copy') }}">
-          <i class="fas fa-copy"></i>
-        </button>
-        <a href="{{ fsc.enlaceVerificacion }}" target="_blank" rel="noopener"
-           class="btn btn-outline-primary" title="{{ trans('firmadoc-verify-header') }}">
-          <i class="fas fa-shield-alt"></i>
-        </a>
-      </div>
+      <button class="btn btn-outline-secondary" type="button"
+              onclick="copiarCampo('codigoVerifFicha')" title="{{ trans('copy') }}">
+        <i class="fas fa-copy"></i>
+      </button>
+      <a href="{{ fsc.enlaceVerificacion }}" target="_blank" rel="noopener"
+         class="btn btn-outline-primary" title="{{ trans('firmadoc-verify-header') }}">
+        <i class="fas fa-shield-alt"></i>
+      </a>
     </div>
   </div>
   {% endif %}
 
+  </div>
 </div>
 
 <script>

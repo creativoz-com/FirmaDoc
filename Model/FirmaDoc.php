@@ -444,13 +444,15 @@ class FirmaDoc extends ModelClass
     public function url(string $type = 'auto', string $list = 'List'): string
     {
         if ($type === 'new') {
-            // Desde la ficha de un tercero se arrastra su código, para que la pantalla
-            // de subida lo traiga ya elegido y sepa a dónde volver.
+            // Desde la ficha de un tercero, el envío es una pestaña de esa misma ficha:
+            // así no se pierde su menú lateral ni hay que volver sobre los pasos.
             if (!empty($this->codcliente)) {
-                return 'FirmaDocSubir?codcliente=' . rawurlencode($this->codcliente);
+                return 'EditCliente?code=' . rawurlencode($this->codcliente)
+                    . '&activetab=FirmaDocEnviarTercero';
             }
             if (!empty($this->codproveedor)) {
-                return 'FirmaDocSubir?codproveedor=' . rawurlencode($this->codproveedor);
+                return 'EditProveedor?code=' . rawurlencode($this->codproveedor)
+                    . '&activetab=FirmaDocEnviarTercero';
             }
             return 'FirmaDocSubir';
         }

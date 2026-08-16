@@ -7,22 +7,18 @@
  * @version   1.0
  * @link      https://creativoz.com
 #}
-{% extends "Master/MenuTemplate.html.twig" %}
+{# MenuBgTemplate y no MenuTemplate: la barra de navegación está en la primera.
+   Con la otra, la pantalla se quedaba sin los menús del ERP. #}
+{% extends "Master/MenuBgTemplate.html.twig" %}
 
 {% block body %}
-<style>
-  select.form-control {
-    appearance: auto !important;
-    -webkit-appearance: auto !important;
-  }
-</style>
 <div class="container-fluid">
   <div class="row justify-content-center">
     <div class="col-12 col-xl-10" style="max-width:900px">
 
       {# CABECERA #}
       <div class="d-flex align-items-center mb-3 mt-3">
-        <i class="fas fa-signature fa-2x text-primary mr-3"></i>
+        <i class="fas fa-signature fa-2x text-primary me-3"></i>
         <div>
           <h3 class="mb-0">FirmaDoc</h3>
           <small class="text-muted">{{ trans('firmadoc-admin-subtitle') }}</small>
@@ -31,14 +27,14 @@
 
       {# MENSAJE GUARDADO #}
       {% if fsc.mensajeGuardado == 'ok' %}
-        <div style="background-color:#d4edda;border:1px solid #c3e6cb;border-radius:4px;padding:10px 40px 10px 15px;margin-bottom:1rem;position:relative;color:#555;">
+        <div class="alert alert-success alert-dismissible fade show">
           {{ trans('firmadoc-admin-saved') }}
-          <button onclick="this.parentElement.style.display='none'" style="position:absolute;top:50%;right:12px;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:2.4rem;color:#888;line-height:1;padding:0;margin-top:-4px;" aria-label="Cerrar">&times;</button>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
       {% elseif fsc.mensajeGuardado == 'error' %}
-        <div style="background-color:#f8d7da;border:1px solid #f5c6cb;border-radius:4px;padding:10px 40px 10px 15px;margin-bottom:1rem;position:relative;color:#555;">
+        <div class="alert alert-danger alert-dismissible fade show">
           {{ trans('firmadoc-admin-save-error') }}
-          <button onclick="this.parentElement.style.display='none'" style="position:absolute;top:50%;right:12px;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:2.4rem;color:#888;line-height:1;padding:0;margin-top:-4px;" aria-label="Cerrar">&times;</button>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
       {% endif %}
 
@@ -46,9 +42,9 @@
         <input type="hidden" name="action" value="save">
 
         {# ===================== MODOS DE FIRMA ===================== #}
-        <div class="card shadow-sm mb-3">
+        <div class="card shadow mb-3">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-pen-nib mr-2 text-primary"></i> {{ trans('firmadoc-admin-sign-modes') }}</h5>
+            <h5 class="mb-0"><i class="fas fa-pen-nib me-2 text-primary"></i> {{ trans('firmadoc-admin-sign-modes') }}</h5>
           </div>
           <div class="card-body">
             <p class="text-muted small mb-3">{{ trans('firmadoc-admin-sign-modes-help') }}</p>
@@ -60,9 +56,9 @@
                     <i class="fas fa-signature fa-2x text-primary mb-2"></i>
                     <h6 class="card-title">{{ trans('firmadoc-admin-handwritten') }}</h6>
                     <p class="card-text small text-muted">{{ trans('firmadoc-admin-handwritten-desc') }}</p>
-                    <div class="custom-control custom-switch mt-2">
-                      <input type="checkbox" class="custom-control-input" id="modo_manuscrita" name="modo_manuscrita" value="1" {% if fsc.config.modo_manuscrita %}checked{% endif %}>
-                      <label class="custom-control-label" for="modo_manuscrita">{{ trans('firmadoc-admin-activate') }}</label>
+                    <div class="form-check form-switch mt-2">
+                      <input type="checkbox" class="form-check-input" id="modo_manuscrita" name="modo_manuscrita" value="1" {% if fsc.config.modo_manuscrita %}checked{% endif %}>
+                      <label class="form-check-label" for="modo_manuscrita">{{ trans('firmadoc-admin-activate') }}</label>
                     </div>
                   </div>
                 </div>
@@ -73,9 +69,9 @@
                     <i class="fas fa-font fa-2x text-info mb-2"></i>
                     <h6 class="card-title">{{ trans('firmadoc-admin-typographic') }}</h6>
                     <p class="card-text small text-muted">{{ trans('firmadoc-admin-typographic-desc') }}</p>
-                    <div class="custom-control custom-switch mt-2">
-                      <input type="checkbox" class="custom-control-input" id="modo_tipografica" name="modo_tipografica" value="1" {% if fsc.config.modo_tipografica %}checked{% endif %}>
-                      <label class="custom-control-label" for="modo_tipografica">{{ trans('firmadoc-admin-activate') }}</label>
+                    <div class="form-check form-switch mt-2">
+                      <input type="checkbox" class="form-check-input" id="modo_tipografica" name="modo_tipografica" value="1" {% if fsc.config.modo_tipografica %}checked{% endif %}>
+                      <label class="form-check-label" for="modo_tipografica">{{ trans('firmadoc-admin-activate') }}</label>
                     </div>
                   </div>
                 </div>
@@ -86,9 +82,9 @@
                     <i class="fas fa-certificate fa-2x text-success mb-2"></i>
                     <h6 class="card-title">{{ trans('firmadoc-admin-certificate') }}</h6>
                     <p class="card-text small text-muted">{{ trans('firmadoc-admin-certificate-desc') }}</p>
-                    <div class="custom-control custom-switch mt-2">
-                      <input type="checkbox" class="custom-control-input" id="modo_certificado" name="modo_certificado" value="1" {% if fsc.config.modo_certificado %}checked{% endif %}>
-                      <label class="custom-control-label" for="modo_certificado">{{ trans('firmadoc-admin-activate') }}</label>
+                    <div class="form-check form-switch mt-2">
+                      <input type="checkbox" class="form-check-input" id="modo_certificado" name="modo_certificado" value="1" {% if fsc.config.modo_certificado %}checked{% endif %}>
+                      <label class="form-check-label" for="modo_certificado">{{ trans('firmadoc-admin-activate') }}</label>
                     </div>
                   </div>
                 </div>
@@ -98,32 +94,26 @@
             {# NIF Y CARGO #}
             <div class="row">
               <div class="col-md-6">
-                <label class="font-weight-bold small">{{ trans('firmadoc-admin-signer-nif') }}</label>
+                <label class="fw-bold small">{{ trans('firmadoc-admin-signer-nif') }}</label>
                 <div class="btn-group btn-group-sm d-flex" role="group">
-                  <label class="btn btn-outline-secondary flex-fill {% if fsc.config.nif_modo == 'no' %}active{% endif %}">
-                    <input type="radio" name="nif_modo" value="no" {% if fsc.config.nif_modo == 'no' %}checked{% endif %}> {{ trans('firmadoc-admin-dont-ask') }}
-                  </label>
-                  <label class="btn btn-outline-secondary flex-fill {% if fsc.config.nif_modo == 'opcional' %}active{% endif %}">
-                    <input type="radio" name="nif_modo" value="opcional" {% if fsc.config.nif_modo == 'opcional' %}checked{% endif %}> {{ trans('firmadoc-admin-optional-field') }}
-                  </label>
-                  <label class="btn btn-outline-secondary flex-fill {% if fsc.config.nif_modo == 'obligatorio' %}active{% endif %}">
-                    <input type="radio" name="nif_modo" value="obligatorio" {% if fsc.config.nif_modo == 'obligatorio' %}checked{% endif %}> {{ trans('firmadoc-admin-required-field') }}
-                  </label>
+                  <input type="radio" class="btn-check" name="nif_modo" id="nif_modo-no" value="no" {% if fsc.config.nif_modo == 'no' %}checked{% endif %}>
+                  <label class="btn btn-outline-secondary flex-fill" for="nif_modo-no">{{ trans('firmadoc-admin-dont-ask') }}</label>
+                  <input type="radio" class="btn-check" name="nif_modo" id="nif_modo-opcional" value="opcional" {% if fsc.config.nif_modo == 'opcional' %}checked{% endif %}>
+                  <label class="btn btn-outline-secondary flex-fill" for="nif_modo-opcional">{{ trans('firmadoc-admin-optional-field') }}</label>
+                  <input type="radio" class="btn-check" name="nif_modo" id="nif_modo-obligatorio" value="obligatorio" {% if fsc.config.nif_modo == 'obligatorio' %}checked{% endif %}>
+                  <label class="btn btn-outline-secondary flex-fill" for="nif_modo-obligatorio">{{ trans('firmadoc-admin-required-field') }}</label>
                 </div>
                 <small class="text-muted">{{ trans('firmadoc-admin-nif-cert-note') }}</small>
               </div>
               <div class="col-md-6">
-                <label class="font-weight-bold small">{{ trans('firmadoc-admin-signer-position') }}</label>
+                <label class="fw-bold small">{{ trans('firmadoc-admin-signer-position') }}</label>
                 <div class="btn-group btn-group-sm d-flex" role="group">
-                  <label class="btn btn-outline-secondary flex-fill {% if fsc.config.cargo_modo == 'no' %}active{% endif %}">
-                    <input type="radio" name="cargo_modo" value="no" {% if fsc.config.cargo_modo == 'no' %}checked{% endif %}> {{ trans('firmadoc-admin-dont-ask') }}
-                  </label>
-                  <label class="btn btn-outline-secondary flex-fill {% if fsc.config.cargo_modo == 'opcional' %}active{% endif %}">
-                    <input type="radio" name="cargo_modo" value="opcional" {% if fsc.config.cargo_modo == 'opcional' %}checked{% endif %}> {{ trans('firmadoc-admin-optional-field') }}
-                  </label>
-                  <label class="btn btn-outline-secondary flex-fill {% if fsc.config.cargo_modo == 'obligatorio' %}active{% endif %}">
-                    <input type="radio" name="cargo_modo" value="obligatorio" {% if fsc.config.cargo_modo == 'obligatorio' %}checked{% endif %}> {{ trans('firmadoc-admin-required-field') }}
-                  </label>
+                  <input type="radio" class="btn-check" name="cargo_modo" id="cargo_modo-no" value="no" {% if fsc.config.cargo_modo == 'no' %}checked{% endif %}>
+                  <label class="btn btn-outline-secondary flex-fill" for="cargo_modo-no">{{ trans('firmadoc-admin-dont-ask') }}</label>
+                  <input type="radio" class="btn-check" name="cargo_modo" id="cargo_modo-opcional" value="opcional" {% if fsc.config.cargo_modo == 'opcional' %}checked{% endif %}>
+                  <label class="btn btn-outline-secondary flex-fill" for="cargo_modo-opcional">{{ trans('firmadoc-admin-optional-field') }}</label>
+                  <input type="radio" class="btn-check" name="cargo_modo" id="cargo_modo-obligatorio" value="obligatorio" {% if fsc.config.cargo_modo == 'obligatorio' %}checked{% endif %}>
+                  <label class="btn btn-outline-secondary flex-fill" for="cargo_modo-obligatorio">{{ trans('firmadoc-admin-required-field') }}</label>
                 </div>
               </div>
             </div>
@@ -131,23 +121,23 @@
         </div>
 
         {# ===================== LINK Y EXPIRACIÓN ===================== #}
-        <div class="card shadow-sm mb-3">
+        <div class="card shadow mb-3">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-link mr-2 text-primary"></i> {{ trans('firmadoc-admin-link-expiration') }}</h5>
+            <h5 class="mb-0"><i class="fas fa-link me-2 text-primary"></i> {{ trans('firmadoc-admin-link-expiration') }}</h5>
           </div>
           <div class="card-body">
             <div class="row">
               <div class="col-md-4">
-                <div class="form-group">
-                  <label class="font-weight-bold small">{{ trans('firmadoc-admin-validity-days') }}</label>
+                <div class="mb-3">
+                  <label class="fw-bold small">{{ trans('firmadoc-admin-validity-days') }}</label>
                   <input type="number" class="form-control" name="dias_validez" value="{{ fsc.config.dias_validez }}" min="1" max="365">
                   <small class="text-muted">{{ trans('firmadoc-admin-validity-help') }}</small>
                 </div>
               </div>
               <div class="col-md-4">
-                <div class="form-group">
-                  <label class="font-weight-bold small">{{ trans('firmadoc-admin-pdf-download') }}</label>
-                  <select class="form-control" name="descarga_pdf" style="appearance:auto;-webkit-appearance:auto;">
+                <div class="mb-3">
+                  <label class="fw-bold small">{{ trans('firmadoc-admin-pdf-download') }}</label>
+                  <select class="form-select" name="descarga_pdf">
                     <option value="siempre" {% if fsc.config.descarga_pdf == 'siempre' %}selected{% endif %}>{{ trans('firmadoc-admin-pdf-always') }}</option>
                     <option value="posfirma" {% if fsc.config.descarga_pdf == 'posfirma' %}selected{% endif %}>{{ trans('firmadoc-admin-pdf-after') }}</option>
                     <option value="no" {% if fsc.config.descarga_pdf == 'no' %}selected{% endif %}>{{ trans('firmadoc-admin-pdf-never') }}</option>
@@ -160,7 +150,7 @@
             <hr>
             <div class="row align-items-start mb-3">
               <div class="col-md-4">
-                <h6 class="mb-1"><i class="fas fa-file-alt mr-2 text-primary"></i> {{ trans('firmadoc-admin-active-docs') }}</h6>
+                <h6 class="mb-1"><i class="fas fa-file-alt me-2 text-primary"></i> {{ trans('firmadoc-admin-active-docs') }}</h6>
                 <small class="text-muted">{{ trans('firmadoc-admin-active-docs-help') }}</small>
               </div>
               <div class="col-md-8">
@@ -170,12 +160,12 @@
                     <div class="card text-center border {% if fsc.config.doc_presupuesto %}border-primary{% else %}border-light{% endif %} h-100">
                       <div class="card-body py-2 px-1">
                         <i class="fas fa-file-invoice fa-lg mb-1 {% if fsc.config.doc_presupuesto %}text-primary{% else %}text-muted{% endif %}"></i>
-                        <p class="small font-weight-bold mb-1">{{ trans('firmadoc-admin-quotes') }}</p>
-                        <div class="custom-control custom-switch d-flex justify-content-center">
-                          <input type="checkbox" class="custom-control-input" id="doc_presupuesto"
+                        <p class="small fw-bold mb-1">{{ trans('firmadoc-admin-quotes') }}</p>
+                        <div class="form-check form-switch d-flex justify-content-center">
+                          <input type="checkbox" class="form-check-input" id="doc_presupuesto"
                                  name="doc_presupuesto" value="1"
                                  {% if fsc.config.doc_presupuesto %}checked{% endif %}>
-                          <label class="custom-control-label" for="doc_presupuesto">
+                          <label class="form-check-label" for="doc_presupuesto">
                             {% if fsc.config.doc_presupuesto %}{{ trans('firmadoc-admin-active') }}{% else %}{{ trans('firmadoc-admin-inactive') }}{% endif %}
                           </label>
                         </div>
@@ -187,12 +177,12 @@
                     <div class="card text-center border {% if fsc.config.doc_albaran %}border-primary{% else %}border-light{% endif %} h-100">
                       <div class="card-body py-2 px-1">
                         <i class="fas fa-truck fa-lg mb-1 {% if fsc.config.doc_albaran %}text-primary{% else %}text-muted{% endif %}"></i>
-                        <p class="small font-weight-bold mb-1">{{ trans('firmadoc-admin-delivery-notes') }}</p>
-                        <div class="custom-control custom-switch d-flex justify-content-center">
-                          <input type="checkbox" class="custom-control-input" id="doc_albaran"
+                        <p class="small fw-bold mb-1">{{ trans('firmadoc-admin-delivery-notes') }}</p>
+                        <div class="form-check form-switch d-flex justify-content-center">
+                          <input type="checkbox" class="form-check-input" id="doc_albaran"
                                  name="doc_albaran" value="1"
                                  {% if fsc.config.doc_albaran %}checked{% endif %}>
-                          <label class="custom-control-label" for="doc_albaran">
+                          <label class="form-check-label" for="doc_albaran">
                             {% if fsc.config.doc_albaran %}{{ trans('firmadoc-admin-active') }}{% else %}{{ trans('firmadoc-admin-inactive') }}{% endif %}
                           </label>
                         </div>
@@ -204,12 +194,12 @@
                     <div class="card text-center border {% if fsc.config.doc_factura %}border-primary{% else %}border-light{% endif %} h-100">
                       <div class="card-body py-2 px-1">
                         <i class="fas fa-file-invoice-dollar fa-lg mb-1 {% if fsc.config.doc_factura %}text-primary{% else %}text-muted{% endif %}"></i>
-                        <p class="small font-weight-bold mb-1">{{ trans('firmadoc-admin-invoices') }}</p>
-                        <div class="custom-control custom-switch d-flex justify-content-center">
-                          <input type="checkbox" class="custom-control-input" id="doc_factura"
+                        <p class="small fw-bold mb-1">{{ trans('firmadoc-admin-invoices') }}</p>
+                        <div class="form-check form-switch d-flex justify-content-center">
+                          <input type="checkbox" class="form-check-input" id="doc_factura"
                                  name="doc_factura" value="1"
                                  {% if fsc.config.doc_factura %}checked{% endif %}>
-                          <label class="custom-control-label" for="doc_factura">
+                          <label class="form-check-label" for="doc_factura">
                             {% if fsc.config.doc_factura %}{{ trans('firmadoc-admin-active') }}{% else %}{{ trans('firmadoc-admin-inactive') }}{% endif %}
                           </label>
                         </div>
@@ -221,12 +211,12 @@
                     <div class="card text-center border {% if fsc.config.doc_pedido %}border-primary{% else %}border-light{% endif %} h-100">
                       <div class="card-body py-2 px-1">
                         <i class="fas fa-shopping-cart fa-lg mb-1 {% if fsc.config.doc_pedido %}text-primary{% else %}text-muted{% endif %}"></i>
-                        <p class="small font-weight-bold mb-1">{{ trans('firmadoc-admin-orders') }}</p>
-                        <div class="custom-control custom-switch d-flex justify-content-center">
-                          <input type="checkbox" class="custom-control-input" id="doc_pedido"
+                        <p class="small fw-bold mb-1">{{ trans('firmadoc-admin-orders') }}</p>
+                        <div class="form-check form-switch d-flex justify-content-center">
+                          <input type="checkbox" class="form-check-input" id="doc_pedido"
                                  name="doc_pedido" value="1"
                                  {% if fsc.config.doc_pedido %}checked{% endif %}>
-                          <label class="custom-control-label" for="doc_pedido">
+                          <label class="form-check-label" for="doc_pedido">
                             {% if fsc.config.doc_pedido %}{{ trans('firmadoc-admin-active') }}{% else %}{{ trans('firmadoc-admin-inactive') }}{% endif %}
                           </label>
                         </div>
@@ -235,7 +225,7 @@
                   </div>
                 </div>
                 <small class="text-muted d-block mt-1">
-                  <i class="fas fa-info-circle mr-1"></i>
+                  <i class="fas fa-info-circle me-1"></i>
                   {{ trans('firmadoc-admin-docs-note') }}
                 </small>
               </div>
@@ -245,16 +235,16 @@
             <hr>
             <div class="row align-items-center mb-2">
               <div class="col-md-6">
-                <h6 class="mb-0"><i class="fas fa-clock mr-2 text-warning"></i> {{ trans('firmadoc-admin-reminders') }}</h6>
+                <h6 class="mb-0"><i class="fas fa-clock me-2 text-warning"></i> {{ trans('firmadoc-admin-reminders') }}</h6>
                 <small class="text-muted">{{ trans('firmadoc-admin-reminders-help') }}</small>
               </div>
               <div class="col-md-6 text-md-right">
-                <div class="custom-control custom-switch d-inline-block">
-                  <input type="checkbox" class="custom-control-input" id="recordatorios_activo"
+                <div class="form-check form-switch d-inline-block">
+                  <input type="checkbox" class="form-check-input" id="recordatorios_activo"
                          name="recordatorios_activo" value="1"
                          {% if fsc.config.recordatorios_activo %}checked{% endif %}
                          onchange="toggleRecordatorios(this.checked)">
-                  <label class="custom-control-label font-weight-bold" for="recordatorios_activo">
+                  <label class="form-check-label fw-bold" for="recordatorios_activo">
                     {% if fsc.config.recordatorios_activo %}{{ trans('firmadoc-admin-enabled') }}{% else %}{{ trans('firmadoc-admin-disabled') }}{% endif %}
                   </label>
                 </div>
@@ -264,12 +254,12 @@
             <div id="recordatorios-config" style="{% if not fsc.config.recordatorios_activo %}display:none;{% endif %}">
               <div class="alert alert-light border mt-2 mb-0">
                 <p class="small mb-2">
-                  <i class="fas fa-info-circle text-info mr-1"></i>
+                  <i class="fas fa-info-circle text-info me-1"></i>
                   {{ trans('firmadoc-admin-reminders-info') | raw }}
                 </p>
                 <div class="row align-items-end">
                   <div class="col-md-6">
-                    <label class="font-weight-bold small">{{ trans('firmadoc-admin-days-before') }}</label>
+                    <label class="fw-bold small">{{ trans('firmadoc-admin-days-before') }}</label>
                     <input type="text" class="form-control" name="recordatorio_dias"
                            value="{{ fsc.config.recordatorio_dias ?? '7,3,1' }}"
                            placeholder="Ej: 7,3,1"
@@ -285,8 +275,8 @@
                         <small class="text-muted d-block mb-1">{{ trans('firmadoc-admin-scheduled-reminders') }}</small>
                         {% for dia in dias %}
                           {% if dia|trim > 0 %}
-                            <span class="badge badge-warning mr-1">
-                              <i class="fas fa-bell mr-1"></i>{{ dia|trim }} {{ trans('firmadoc-admin-days-before-badge') }}
+                            <span class="badge bg-warning me-1">
+                              <i class="fas fa-bell me-1"></i>{{ dia|trim }} {{ trans('firmadoc-admin-days-before-badge') }}
                             </span>
                           {% endif %}
                         {% endfor %}
@@ -301,9 +291,9 @@
         </div>
 
         {# ===================== NOTIFICACIONES EMPRESA ===================== #}
-        <div class="card shadow-sm mb-3">
+        <div class="card shadow mb-3">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-bell mr-2 text-primary"></i> {{ trans('firmadoc-admin-company-notifications') }}</h5>
+            <h5 class="mb-0"><i class="fas fa-bell me-2 text-primary"></i> {{ trans('firmadoc-admin-company-notifications') }}</h5>
           </div>
           <div class="card-body">
             <div class="row align-items-center mb-3">
@@ -311,15 +301,15 @@
                 <strong class="small">{{ trans('firmadoc-admin-notify-on-sign') }}</strong><br>
                 <small class="text-muted">{{ trans('firmadoc-admin-notify-help') }}</small>
               </div>
-              <div class="col-md-4 text-right">
-                <div class="custom-control custom-switch">
-                  <input type="checkbox" class="custom-control-input" id="notif_empresa" name="notif_empresa" value="1" {% if fsc.config.notif_empresa %}checked{% endif %}>
-                  <label class="custom-control-label" for="notif_empresa">{{ trans('firmadoc-admin-activate') }}</label>
+              <div class="col-md-4 text-end">
+                <div class="form-check form-switch">
+                  <input type="checkbox" class="form-check-input" id="notif_empresa" name="notif_empresa" value="1" {% if fsc.config.notif_empresa %}checked{% endif %}>
+                  <label class="form-check-label" for="notif_empresa">{{ trans('firmadoc-admin-activate') }}</label>
                 </div>
               </div>
             </div>
-            <div class="form-group">
-              <label class="font-weight-bold small">{{ trans('firmadoc-admin-additional-email') }} <span class="text-muted font-weight-normal">({{ trans('firmadoc-admin-optional-field') | lower }})</span></label>
+            <div class="mb-3">
+              <label class="fw-bold small">{{ trans('firmadoc-admin-additional-email') }} <span class="text-muted font-weight-normal">({{ trans('firmadoc-admin-optional-field') | lower }})</span></label>
               <input type="email" class="form-control" name="email_adicional" value="{{ fsc.config.email_adicional }}" placeholder="admin@miempresa.com">
               <small class="text-muted">{{ trans('firmadoc-admin-additional-email-help') }}</small>
             </div>
@@ -327,9 +317,9 @@
         </div>
 
         {# ===================== APARIENCIA ===================== #}
-        <div class="card shadow-sm mb-3">
+        <div class="card shadow mb-3">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-palette mr-2 text-primary"></i> {{ trans('firmadoc-admin-appearance') }}</h5>
+            <h5 class="mb-0"><i class="fas fa-palette me-2 text-primary"></i> {{ trans('firmadoc-admin-appearance') }}</h5>
           </div>
           <div class="card-body">
             <div class="row align-items-center mb-3">
@@ -337,10 +327,10 @@
                 <strong class="small">{{ trans('firmadoc-admin-show-logo') }}</strong><br>
                 <small class="text-muted">{{ trans('firmadoc-admin-show-logo-help') }}</small>
               </div>
-              <div class="col-md-4 text-right">
-                <div class="custom-control custom-switch">
-                  <input type="checkbox" class="custom-control-input" id="mostrar_logo" name="mostrar_logo" value="1" {% if fsc.config.mostrar_logo %}checked{% endif %}>
-                  <label class="custom-control-label" for="mostrar_logo">{{ trans('firmadoc-admin-show') }}</label>
+              <div class="col-md-4 text-end">
+                <div class="form-check form-switch">
+                  <input type="checkbox" class="form-check-input" id="mostrar_logo" name="mostrar_logo" value="1" {% if fsc.config.mostrar_logo %}checked{% endif %}>
+                  <label class="form-check-label" for="mostrar_logo">{{ trans('firmadoc-admin-show') }}</label>
                 </div>
               </div>
             </div>
@@ -348,21 +338,21 @@
         </div>
 
         {# ===================== TEXTO LEGAL ===================== #}
-        <div class="card shadow-sm mb-3">
+        <div class="card shadow mb-3">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-gavel mr-2 text-primary"></i> {{ trans('firmadoc-admin-legal') }}</h5>
+            <h5 class="mb-0"><i class="fas fa-gavel me-2 text-primary"></i> {{ trans('firmadoc-admin-legal') }}</h5>
           </div>
           <div class="card-body">
             <p class="text-muted small mb-3">
               {{ trans('firmadoc-admin-legal-help') | raw }}
             </p>
-            <div class="form-group">
-              <label class="font-weight-bold small"><i class="fas fa-link mr-1"></i> {{ trans('firmadoc-admin-legal-url') }} <span class="text-muted font-weight-normal">({{ trans('firmadoc-admin-optional-field') | lower }})</span></label>
+            <div class="mb-3">
+              <label class="fw-bold small"><i class="fas fa-link me-1"></i> {{ trans('firmadoc-admin-legal-url') }} <span class="text-muted font-weight-normal">({{ trans('firmadoc-admin-optional-field') | lower }})</span></label>
               <input type="text" class="form-control" name="legal_url" value="{{ fsc.config.legal_url }}" placeholder="https://miempresa.com/aviso-legal">
               <small class="text-muted">{{ trans('firmadoc-admin-legal-url-help') }}</small>
             </div>
-            <div class="form-group">
-              <label class="font-weight-bold small"><i class="fas fa-align-left mr-1"></i> {{ trans('firmadoc-admin-legal-text') }} <span class="text-muted font-weight-normal">({{ trans('firmadoc-admin-optional-field') | lower }})</span></label>
+            <div class="mb-3">
+              <label class="fw-bold small"><i class="fas fa-align-left me-1"></i> {{ trans('firmadoc-admin-legal-text') }} <span class="text-muted font-weight-normal">({{ trans('firmadoc-admin-optional-field') | lower }})</span></label>
               <textarea class="form-control" name="legal_texto" rows="4" id="legal_texto_editor" placeholder="Al firmar este documento, el firmante declara haber leído y aceptado su contenido...">{{ fsc.config.legal_texto }}</textarea>
               <small class="text-muted">{{ trans('firmadoc-admin-legal-text-help') }}</small>
             </div>
@@ -370,24 +360,24 @@
         </div>
 
         {# ===================== EMAIL AL CLIENTE ===================== #}
-        <div class="card shadow-sm mb-3">
+        <div class="card shadow mb-3">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-envelope mr-2 text-primary"></i> {{ trans('firmadoc-admin-email-template') }}</h5>
+            <h5 class="mb-0"><i class="fas fa-envelope me-2 text-primary"></i> {{ trans('firmadoc-admin-email-template') }}</h5>
           </div>
           <div class="card-body">
-            <div class="form-group">
-              <label class="font-weight-bold small">{{ trans('firmadoc-admin-email-subject') }}</label>
+            <div class="mb-3">
+              <label class="fw-bold small">{{ trans('firmadoc-admin-email-subject') }}</label>
               <input type="text" class="form-control" name="email_asunto" value="{{ fsc.config.email_asunto }}">
             </div>
-            <div class="form-group">
-              <label class="font-weight-bold small">{{ trans('firmadoc-admin-email-body') }}</label>
+            <div class="mb-3">
+              <label class="fw-bold small">{{ trans('firmadoc-admin-email-body') }}</label>
               <textarea class="form-control" name="email_cuerpo" rows="6">{{ fsc.config.email_cuerpo }}</textarea>
             </div>
             <div class="mt-2">
-              <small class="text-muted font-weight-bold">{{ trans('firmadoc-admin-available-vars') }}</small><br>
+              <small class="text-muted fw-bold">{{ trans('firmadoc-admin-available-vars') }}</small><br>
               <div class="mt-1">
                 {% for var in ['{{cliente}}','{{empresa}}','{{tipo_doc}}','{{codigo_doc}}','{{link_firma}}','{{fecha_expiracion}}','{{dias_restantes}}','{{importe}}'] %}
-                  <span class="badge badge-success mr-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
+                  <span class="badge bg-success me-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
                 {% endfor %}
               </div>
             </div>
@@ -395,21 +385,21 @@
         </div>
 
         {# ===================== WHATSAPP ===================== #}
-        <div class="card shadow-sm mb-3">
+        <div class="card shadow mb-3">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fab fa-whatsapp mr-2 text-success"></i> {{ trans('firmadoc-admin-whatsapp-template') }}</h5>
+            <h5 class="mb-0"><i class="fab fa-whatsapp me-2 text-success"></i> {{ trans('firmadoc-admin-whatsapp-template') }}</h5>
           </div>
           <div class="card-body">
-            <div class="form-group">
-              <label class="font-weight-bold small">{{ trans('firmadoc-admin-whatsapp-message') }}</label>
+            <div class="mb-3">
+              <label class="fw-bold small">{{ trans('firmadoc-admin-whatsapp-message') }}</label>
               <textarea class="form-control" name="whatsapp_mensaje" rows="6">{{ fsc.config.whatsapp_mensaje }}</textarea>
               <small class="text-muted">{{ trans('firmadoc-admin-whatsapp-plain') }}</small>
             </div>
             <div class="mt-2">
-              <small class="text-muted font-weight-bold">{{ trans('firmadoc-admin-available-vars-wa') }}</small><br>
+              <small class="text-muted fw-bold">{{ trans('firmadoc-admin-available-vars-wa') }}</small><br>
               <div class="mt-1">
                 {% for var in ['{{cliente}}','{{empresa}}','{{tipo_doc}}','{{codigo_doc}}','{{link_firma}}','{{fecha_expiracion}}','{{importe}}'] %}
-                  <span class="badge badge-success mr-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
+                  <span class="badge bg-success me-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
                 {% endfor %}
               </div>
             </div>
@@ -417,29 +407,29 @@
         </div>
 
         {# EMAIL CONFIRMACIÓN TODOS FIRMARON #}
-        <div class="card shadow-sm mb-4">
+        <div class="card shadow mb-4">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-check-double mr-2 text-success"></i> {{ trans('firmadoc-admin-confirm-email') }}</h5>
+            <h5 class="mb-0"><i class="fas fa-check-double me-2 text-success"></i> {{ trans('firmadoc-admin-confirm-email') }}</h5>
           </div>
           <div class="card-body">
             <p class="text-muted small mb-3">
               {{ trans('firmadoc-admin-confirm-help') }}
             </p>
-            <div class="form-group">
-              <label class="font-weight-bold small">{{ trans('firmadoc-admin-confirm-subject') }}</label>
+            <div class="mb-3">
+              <label class="fw-bold small">{{ trans('firmadoc-admin-confirm-subject') }}</label>
               <input type="text" class="form-control" name="confirm_asunto"
                      value="{{ fsc.config.confirm_asunto }}"
                      placeholder="Documento {{tipo_doc}} {{codigo_doc}} firmado por todos">
             </div>
-            <div class="form-group">
-              <label class="font-weight-bold small">{{ trans('firmadoc-admin-confirm-body') }}</label>
+            <div class="mb-3">
+              <label class="fw-bold small">{{ trans('firmadoc-admin-confirm-body') }}</label>
               <textarea class="form-control" name="confirm_cuerpo" rows="6">{{ fsc.config.confirm_cuerpo }}</textarea>
             </div>
             <div class="mt-2">
-              <small class="text-muted font-weight-bold">{{ trans('firmadoc-admin-available-vars-wa') }}</small><br>
+              <small class="text-muted fw-bold">{{ trans('firmadoc-admin-available-vars-wa') }}</small><br>
               <div class="mt-1">
                 {% for var in ['{{cliente}}','{{empresa}}','{{tipo_doc}}','{{codigo_doc}}','{{link_documento}}','{{importe}}'] %}
-                  <span class="badge badge-success mr-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
+                  <span class="badge bg-success me-1 mb-1 var-copiable" style="cursor:pointer;font-family:monospace;background-color:#1a7a4a;color:#ffffff;" data-var="{{ var }}">{{ var }}</span>
                 {% endfor %}
               </div>
               <small class="text-muted mt-1 d-block">{{ trans('firmadoc-admin-confirm-link-note') | raw }}</small>
@@ -450,10 +440,10 @@
         {# BOTONES GUARDAR #}
         <div class="d-flex justify-content-end mb-4" style="gap: 12px;">
           <a href="{{ asset('index.php') }}" class="btn btn-secondary px-4">
-            <i class="fas fa-times mr-2"></i> {{ trans('firmadoc-admin-btn-cancel') }}
+            <i class="fas fa-times me-2"></i> {{ trans('firmadoc-admin-btn-cancel') }}
           </a>
           <button type="submit" class="btn btn-primary px-4">
-            <i class="fas fa-save mr-2"></i> {{ trans('firmadoc-admin-btn-save') }}
+            <i class="fas fa-save me-2"></i> {{ trans('firmadoc-admin-btn-save') }}
           </button>
         </div>
 
@@ -487,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!dias.length) { preview.innerHTML = ''; return; }
     var html = '<small class="text-muted d-block mb-1">' + FD_SCHEDULED + '</small>';
     dias.forEach(function(d) {
-      html += '<span class="badge badge-warning mr-1"><i class="fas fa-bell mr-1"></i>' + d + ' ' + FD_DAYS_BEFORE + '</span>';
+      html += '<span class="badge bg-warning me-1"><i class="fas fa-bell me-1"></i>' + d + ' ' + FD_DAYS_BEFORE + '</span>';
     });
     preview.innerHTML = html;
   });

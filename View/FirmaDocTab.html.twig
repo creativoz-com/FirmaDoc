@@ -4,8 +4,12 @@
  * @author    Francisco José Matías Olivares <fmatias@creativoz.com>
  * @copyright 2025-2026 Francisco José Matías Olivares
  * @license   Acuerdo de Licencia de Usuario Final (EULA) — véase archivo LICENSE
- * @version   1.0
+ * @version   1.4
  * @link      https://creativoz.com
+ *
+ * Estructura y clases calcadas de las vistas del núcleo —card shadow, card-body,
+ * títulos h3.h4 y badges de Bootstrap—: la pestaña tiene que parecer una más del
+ * ERP, no una pantalla traída de otro sitio.
 #}
 {% set config = view.firmadocConfig %}
 {% set baseUrl = view.firmadocBaseUrl %}
@@ -24,58 +28,47 @@
   {% if f.estado == 'anulado_mod' and firmaAnulada is null %}{% set firmaAnulada = f %}{% endif %}
 {% endfor %}
 
-<style>
-  .fd-badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:0.82em; font-weight:600; }
-  .fd-firmado   { background:#28a745; color:#fff; }
-  .fd-pendiente { background:#007bff; color:#fff; }
-  .fd-anulado   { background:#fd7e14; color:#fff; }
-  .fd-cancelado { background:#dc3545; color:#fff; }
-  .fd-expirado  { background:#6c757d; color:#fff; }
-</style>
-
-<div class="container-fluid mt-3">
+<div class="container-fluid pt-3">
 
 {# ── DOCUMENTO FIRMADO ─── #}
 {% if firmas|length > 0 and firmas[0].estado == 'firmado' %}
-<div class="alert alert-success d-flex align-items-start justify-content-between">
-  <div class="d-flex align-items-start">
-    <i class="fas fa-check-circle fa-2x mr-3 mt-1"></i>
-    <div>
-      <strong>Documento firmado</strong>
-      {% if firmaFirmada.modo_multifirma and firmaFirmada.modo_multifirma != 'unico' %}
-        {# Multi-firmante: mostrar suma de veces visto, no datos individuales #}
-        <br>
-        {% if firmaFirmada.modo_multifirma == 'paralelo' %}
-          <span class="text-muted"><i class="fas fa-users mr-1"></i>Firmado por todos los firmantes (paralelo)</span>
-        {% else %}
-          <span class="text-muted"><i class="fas fa-list-ol mr-1"></i>Firmado por todos los firmantes (secuencial)</span>
-        {% endif %}
-        {% if firmaFirmada.firmantes is defined and firmaFirmada.firmantes|length > 0 %}
-          {% set totalVisto = 0 %}
-          {% for f in firmaFirmada.firmantes %}{% set totalVisto = totalVisto + (f.veces_visto ?? 0) %}{% endfor %}
-          {% if totalVisto > 0 %}
-            &nbsp;·&nbsp; <i class="fas fa-eye mr-1"></i>{{ totalVisto }} visualizaci{{ totalVisto == 1 ? 'ón' : 'ones' }} en total
-          {% endif %}
-        {% endif %}
-        <br><small>Consulta el historial para ver los detalles de cada firmante.</small>
+<div class="alert alert-success d-flex align-items-start">
+  <i class="fas fa-check-circle fa-2x me-3 mt-1"></i>
+  <div>
+    <strong>Documento firmado</strong>
+    {% if firmaFirmada.modo_multifirma and firmaFirmada.modo_multifirma != 'unico' %}
+      {# Multi-firmante: mostrar suma de veces visto, no datos individuales #}
+      <br>
+      {% if firmaFirmada.modo_multifirma == 'paralelo' %}
+        <i class="fas fa-users me-1"></i>Firmado por todos los firmantes (paralelo)
       {% else %}
-        {# Modo único: mostrar datos completos #}
-        <br>Firmado el <strong>{{ firmaFirmada.fecha_firma }}</strong>
-        por <strong>{{ firmaFirmada.firma_nombre }}</strong>
-        {% if firmaFirmada.firma_nif %} &nbsp;·&nbsp; NIF: {{ firmaFirmada.firma_nif }}{% endif %}
-        {% if firmaFirmada.modo_firma == 'certificado' %}
-          &nbsp;·&nbsp; <span class="badge badge-success text-dark" style="background-color:#c3e6cb;color:#155724!important;border:1px solid #b1dfbb"><i class="fas fa-id-card mr-1" style="color:#155724"></i>Certificado digital</span>
-        {% endif %}
-        {% if firmaFirmada.ip_cliente %} &nbsp;·&nbsp; IP: {{ firmaFirmada.ip_cliente }}{% endif %}
-        {% if firmaFirmada.observaciones_firmante %}
-        <br><span class="badge badge-light border mt-1">
-          <i class="fas fa-comment-alt mr-1 text-secondary"></i>
-          <em>{{ firmaFirmada.observaciones_firmante }}</em>
-        </span>
+        <i class="fas fa-list-ol me-1"></i>Firmado por todos los firmantes (secuencial)
+      {% endif %}
+      {% if firmaFirmada.firmantes is defined and firmaFirmada.firmantes|length > 0 %}
+        {% set totalVisto = 0 %}
+        {% for f in firmaFirmada.firmantes %}{% set totalVisto = totalVisto + (f.veces_visto ?? 0) %}{% endfor %}
+        {% if totalVisto > 0 %}
+          &nbsp;·&nbsp; <i class="fas fa-eye me-1"></i>{{ totalVisto }} visualizaci{{ totalVisto == 1 ? 'ón' : 'ones' }} en total
         {% endif %}
       {% endif %}
-      <br><small>Esta firma es válida mientras no se modifique el documento.</small>
-    </div>
+      <br><small>Consulta el historial para ver los detalles de cada firmante.</small>
+    {% else %}
+      {# Modo único: mostrar datos completos #}
+      <br>Firmado el <strong>{{ firmaFirmada.fecha_firma }}</strong>
+      por <strong>{{ firmaFirmada.firma_nombre }}</strong>
+      {% if firmaFirmada.firma_nif %} &nbsp;·&nbsp; NIF: {{ firmaFirmada.firma_nif }}{% endif %}
+      {% if firmaFirmada.modo_firma == 'certificado' %}
+        &nbsp;·&nbsp; <span class="badge bg-success"><i class="fas fa-id-card me-1"></i>Certificado digital</span>
+      {% endif %}
+      {% if firmaFirmada.ip_cliente %} &nbsp;·&nbsp; IP: {{ firmaFirmada.ip_cliente }}{% endif %}
+      {% if firmaFirmada.observaciones_firmante %}
+      <br><span class="badge bg-light text-dark border mt-1">
+        <i class="fas fa-comment-alt me-1"></i>
+        <em>{{ firmaFirmada.observaciones_firmante }}</em>
+      </span>
+      {% endif %}
+    {% endif %}
+    <br><small>Esta firma es válida mientras no se modifique el documento.</small>
   </div>
 </div>
 {% endif %}
@@ -83,7 +76,7 @@
 {# ── FIRMA ANULADA POR MODIFICACIÓN (solo si el último registro es anulado) ─── #}
 {% if firmas|length > 0 and firmas[0].estado == 'anulado_mod' %}
 <div class="alert alert-warning">
-  <i class="fas fa-exclamation-triangle mr-2"></i>
+  <i class="fas fa-exclamation-triangle me-2"></i>
   <strong>Firma anulada:</strong> El documento fue modificado después de ser firmado.
   Genera un nuevo enlace para que el cliente firme la versión actualizada.
 </div>
@@ -91,126 +84,119 @@
 
 {# ── ENLACE PENDIENTE (solo si NO hay firma válida) ─── #}
 {% if firmaActiva and not firmaFirmada %}
-<div class="card shadow-sm mb-4" style="border-left:4px solid #ffc107">
-  <div class="card-header" style="background:#fff8e1">
-    <h6 class="mb-0 text-dark">
-      <i class="fas fa-clock mr-2 text-warning"></i>
-      Pendiente de firma &nbsp;·&nbsp; <small>Válido hasta {{ firmaActiva.fecha_expiracion }}</small>
+<div class="card shadow mb-3">
+  <div class="card-body">
+    <h3 class="h4 mb-3">
+      <i class="fas fa-clock fa-fw me-2"></i>Pendiente de firma
+      <small class="text-muted">· Válido hasta {{ firmaActiva.fecha_expiracion }}</small>
       {% if firmaActiva.modo_multifirma and firmaActiva.modo_multifirma != 'unico' %}
-        &nbsp;·&nbsp;
-        <span class="badge badge-secondary">
+        <span class="badge bg-secondary">
           {% if firmaActiva.modo_multifirma == 'paralelo' %}
-            <i class="fas fa-users mr-1"></i>Paralelo ({{ firmaActiva.firmantes|length }} firmantes)
+            <i class="fas fa-users me-1"></i>Paralelo ({{ firmaActiva.firmantes|length }} firmantes)
           {% else %}
-            <i class="fas fa-list-ol mr-1"></i>Secuencial ({{ firmaActiva.firmantes|length }} firmantes)
+            <i class="fas fa-list-ol me-1"></i>Secuencial ({{ firmaActiva.firmantes|length }} firmantes)
           {% endif %}
         </span>
       {% endif %}
-    </h6>
-  </div>
-  <div class="card-body">
+    </h3>
 
     {# MODO INDIVIDUAL: enlace único + botones Copiar, Abrir, WhatsApp, Email #}
     {% if firmaActiva.modo_multifirma == 'unico' or firmaActiva.firmantes|length <= 1 %}
-    <div class="form-group mb-3">
-      <label class="small text-muted mb-1">Enlace de firma</label>
-      <div class="input-group input-group-sm">
+    <div class="mb-3">
+      <label class="mb-0">Enlace de firma</label>
+      <div class="input-group">
         <input type="text" class="form-control" id="firmadocLinkInput"
                value="{{ baseUrl }}/FirmaDocPublic?token={{ firmaActiva.token }}" readonly>
-        <div class="input-group-append">
-          <button class="btn btn-outline-secondary" onclick="firmadocCopiar()" title="Copiar enlace">
-            <i class="fas fa-copy"></i>
+        <button class="btn btn-outline-secondary" type="button" onclick="firmadocCopiar()" title="Copiar enlace">
+          <i class="fas fa-copy"></i>
+        </button>
+        <a href="{{ baseUrl }}/FirmaDocPublic?token={{ firmaActiva.token }}"
+           target="_blank" rel="noopener" class="btn btn-outline-primary" title="Abrir en nueva pestaña">
+          <i class="fas fa-external-link-alt"></i>
+        </a>
+        {% if waLinks[firmaActiva.id] is defined %}
+        <a href="{{ waLinks[firmaActiva.id] }}" target="_blank" rel="noopener"
+           class="btn btn-success" title="Enviar por WhatsApp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+        {% endif %}
+        <form method="post" action="{{ fsc.url() }}" style="display:contents">
+          {{ formToken() | raw }}
+          <input type="hidden" name="activetab" value="FirmaDocTab">
+          <input type="hidden" name="code" value="{{ fsc.getModel().primaryColumnValue() }}">
+          <input type="hidden" name="action" value="firmadoc-email">
+          <input type="hidden" name="firmadoc_id" value="{{ firmaActiva.id }}">
+          <button type="submit" class="btn btn-primary" title="Reenviar email">
+            <i class="fas fa-envelope"></i>
           </button>
-          <a href="{{ baseUrl }}/FirmaDocPublic?token={{ firmaActiva.token }}"
-             target="_blank" class="btn btn-outline-primary" title="Abrir en nueva pestaña">
-            <i class="fas fa-external-link-alt"></i>
-          </a>
-          {% if waLinks[firmaActiva.id] is defined %}
-          <a href="{{ waLinks[firmaActiva.id] }}" target="_blank"
-             class="btn btn-success" title="Enviar por WhatsApp">
-            <i class="fab fa-whatsapp"></i>
-          </a>
-          {% endif %}
-          <form method="post" action="{{ fsc.url() }}" style="display:contents">
-            {{ formToken() | raw }}
-            <input type="hidden" name="activetab" value="FirmaDocTab">
-            <input type="hidden" name="code" value="{{ fsc.getModel().primaryColumnValue() }}">
-            <input type="hidden" name="action" value="firmadoc-email">
-            <input type="hidden" name="firmadoc_id" value="{{ firmaActiva.id }}">
-            <button type="submit" class="btn btn-primary" title="Reenviar email">
-              <i class="fas fa-envelope"></i>
-            </button>
-          </form>
-        </div>
+        </form>
       </div>
     </div>
 
     {# MODO MULTI-FIRMANTE: tabla de firmantes con estado y botones individuales #}
     {% else %}
     <div class="table-responsive mb-3">
-      <table class="table table-sm table-bordered mb-0">
-        <thead class="thead-light">
+      <table class="table table-hover mb-0">
+        <thead>
           <tr>
             <th style="width:24px">#</th>
             <th>Nombre</th>
             <th>Email</th>
-            <th style="width:70px">Estado</th>
+            <th>Estado</th>
             <th>Enlace / Acciones</th>
           </tr>
         </thead>
         <tbody>
           {% for firmante in firmaActiva.firmantes %}
           <tr>
-            <td class="text-center font-weight-bold">{{ firmante.orden }}</td>
-            <td style="white-space:nowrap"><small>{{ firmante.nombre ?: '—' }}</small></td>
-            <td style="white-space:nowrap"><small>{{ firmante.email }}</small></td>
-            <td style="white-space:nowrap;text-align:center">
+            <td class="text-center fw-bold">{{ firmante.orden }}</td>
+            <td style="white-space:nowrap">{{ firmante.nombre ?: '—' }}</td>
+            <td style="white-space:nowrap">{{ firmante.email }}</td>
+            <td style="white-space:nowrap">
               {% if firmante.estado == 'firmado' %}
-                <span style="padding:1px 5px;border-radius:3px;font-size:0.75em;font-weight:600;background:#28a745;color:#fff">Firmado</span>
+                <span class="badge bg-success">Firmado</span>
               {% elseif firmante.estado == 'esperando' %}
-                <span style="padding:1px 5px;border-radius:3px;font-size:0.75em;font-weight:600;background:#6c757d;color:#fff">Esperando</span>
+                <span class="badge bg-secondary">Esperando</span>
               {% else %}
-                <span style="padding:1px 5px;border-radius:3px;font-size:0.75em;font-weight:600;background:#ffc107;color:#212529">Pendiente</span>
+                <span class="badge bg-warning text-dark">Pendiente</span>
               {% endif %}
             </td>
             <td>
               {% if firmante.estado == 'pendiente' %}
-              <div class="input-group input-group-sm" style="flex-wrap:nowrap">
-                <input type="text" class="form-control form-control-sm"
+              <div class="input-group input-group-sm flex-nowrap">
+                <input type="text" class="form-control"
                        value="{{ baseUrl }}/FirmaDocPublic?token={{ firmante.token }}"
-                       id="fd-link-{{ firmante.id }}" readonly style="font-size:0.75em;min-width:80px">
-                <div class="input-group-append" style="flex-wrap:nowrap">
-                  <button class="btn btn-outline-secondary btn-sm" style="padding:0 5px"
-                          onclick="navigator.clipboard.writeText(document.getElementById('fd-link-{{ firmante.id }}').value)"
-                          title="Copiar"><i class="fas fa-copy" style="font-size:0.75em"></i></button>
-                  <a href="{{ baseUrl }}/FirmaDocPublic?token={{ firmante.token }}"
-                     target="_blank" class="btn btn-outline-primary btn-sm" style="padding:0 5px"
-                     title="Abrir"><i class="fas fa-external-link-alt" style="font-size:0.75em"></i></a>
-                  {% set waKeyFirmante = 'firmante_' ~ firmante.id %}
-                  {% if waLinks[waKeyFirmante] is defined %}
-                  <a href="{{ waLinks[waKeyFirmante] }}"
-                     target="_blank" class="btn btn-success btn-sm" style="padding:0 5px"
-                     title="WhatsApp a {{ firmante.nombre }}">
-                    <i class="fab fa-whatsapp" style="font-size:0.75em"></i></a>
-                  {% endif %}
-                  <form method="post" action="{{ fsc.url() }}" style="display:contents">
-                    {{ formToken() | raw }}
-                    <input type="hidden" name="activetab" value="FirmaDocTab">
-                    <input type="hidden" name="code" value="{{ fsc.getModel().primaryColumnValue() }}">
-                    <input type="hidden" name="action" value="firmadoc-email-firmante">
-                    <input type="hidden" name="firmante_id" value="{{ firmante.id }}">
-                    <input type="hidden" name="firmadoc_id" value="{{ firmaActiva.id }}">
-                    <button type="submit" class="btn btn-primary btn-sm" style="padding:0 5px"
-                            title="Reenviar email a {{ firmante.nombre }}">
-                      <i class="fas fa-envelope" style="font-size:0.75em"></i>
-                    </button>
-                  </form>
-                </div>
+                       id="fd-link-{{ firmante.id }}" readonly style="min-width:80px">
+                <button class="btn btn-outline-secondary" type="button"
+                        onclick="navigator.clipboard.writeText(document.getElementById('fd-link-{{ firmante.id }}').value)"
+                        title="Copiar"><i class="fas fa-copy"></i></button>
+                <a href="{{ baseUrl }}/FirmaDocPublic?token={{ firmante.token }}"
+                   target="_blank" rel="noopener" class="btn btn-outline-primary"
+                   title="Abrir"><i class="fas fa-external-link-alt"></i></a>
+                {% set waKeyFirmante = 'firmante_' ~ firmante.id %}
+                {% if waLinks[waKeyFirmante] is defined %}
+                <a href="{{ waLinks[waKeyFirmante] }}"
+                   target="_blank" rel="noopener" class="btn btn-success"
+                   title="WhatsApp a {{ firmante.nombre }}">
+                  <i class="fab fa-whatsapp"></i></a>
+                {% endif %}
+                <form method="post" action="{{ fsc.url() }}" style="display:contents">
+                  {{ formToken() | raw }}
+                  <input type="hidden" name="activetab" value="FirmaDocTab">
+                  <input type="hidden" name="code" value="{{ fsc.getModel().primaryColumnValue() }}">
+                  <input type="hidden" name="action" value="firmadoc-email-firmante">
+                  <input type="hidden" name="firmante_id" value="{{ firmante.id }}">
+                  <input type="hidden" name="firmadoc_id" value="{{ firmaActiva.id }}">
+                  <button type="submit" class="btn btn-primary"
+                          title="Reenviar email a {{ firmante.nombre }}">
+                    <i class="fas fa-envelope"></i>
+                  </button>
+                </form>
               </div>
               {% elseif firmante.estado == 'firmado' %}
-                <small class="text-success"><i class="fas fa-check-circle"></i> {{ firmante.fecha_firma }}</small>
+                <span class="text-success"><i class="fas fa-check-circle"></i> {{ firmante.fecha_firma }}</span>
               {% else %}
-                <small class="text-muted">—</small>
+                <span class="text-muted">—</span>
               {% endif %}
             </td>
           </tr>
@@ -221,45 +207,44 @@
     {% endif %}
 
     {# Cancelar — siempre disponible #}
-    <div class="mt-2">
-      <form method="post" action="{{ fsc.url() }}" style="display:inline"
-            onsubmit="return confirm('¿Cancelar todos los enlaces de firma?')">
-        {{ formToken() | raw }}
-        <input type="hidden" name="activetab" value="FirmaDocTab">
-        <input type="hidden" name="code" value="{{ fsc.getModel().primaryColumnValue() }}">
-        <input type="hidden" name="action" value="firmadoc-cancelar">
-        <input type="hidden" name="firmadoc_id" value="{{ firmaActiva.id }}">
-        <button type="submit" class="btn btn-outline-danger btn-sm">
-          <i class="fas fa-ban mr-1"></i> Cancelar enlace{{ firmaActiva.firmantes|length > 1 ? 's' : '' }}
-        </button>
-      </form>
-    </div>
+    <form method="post" action="{{ fsc.url() }}"
+          onsubmit="return confirm('¿Cancelar todos los enlaces de firma?')">
+      {{ formToken() | raw }}
+      <input type="hidden" name="activetab" value="FirmaDocTab">
+      <input type="hidden" name="code" value="{{ fsc.getModel().primaryColumnValue() }}">
+      <input type="hidden" name="action" value="firmadoc-cancelar">
+      <input type="hidden" name="firmadoc_id" value="{{ firmaActiva.id }}">
+      <button type="submit" class="btn btn-outline-danger">
+        <i class="fas fa-ban me-1"></i> Cancelar enlace{{ firmaActiva.firmantes|length > 1 ? 's' : '' }}
+      </button>
+    </form>
 
   </div>
 </div>
 
 {% elseif firmas|length == 0 or firmas[0].estado in ['anulado_mod', 'cancelado', 'expirado'] %}
 {# ── FORMULARIO GENERAR NUEVO ENLACE ─── #}
-<div class="card shadow-sm mb-4">
-  <div class="card-header bg-light d-flex justify-content-between align-items-center">
-    <h6 class="mb-0"><i class="fas fa-signature mr-2"></i> Solicitar firma</h6>
-    {# Selector de modo #}
-    <div class="btn-group btn-group-sm" role="group">
-      <button type="button" class="btn btn-outline-secondary active" id="btn-modo-unico"
-              onclick="firmadocSetModo('unico')" title="Un solo firmante">
-        <i class="fas fa-user"></i> Individual
-      </button>
-      <button type="button" class="btn btn-outline-secondary" id="btn-modo-paralelo"
-              onclick="firmadocSetModo('paralelo')" title="Varios firmantes en paralelo">
-        <i class="fas fa-users"></i> Paralelo
-      </button>
-      <button type="button" class="btn btn-outline-secondary" id="btn-modo-secuencial"
-              onclick="firmadocSetModo('secuencial')" title="Varios firmantes en secuencia">
-        <i class="fas fa-list-ol"></i> Secuencial
-      </button>
-    </div>
-  </div>
+<div class="card shadow mb-3">
   <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+      <h3 class="h4 mb-0"><i class="fas fa-signature fa-fw me-2"></i>Solicitar firma</h3>
+      {# Selector de modo #}
+      <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-secondary active" id="btn-modo-unico"
+                onclick="firmadocSetModo('unico')" title="Un solo firmante">
+          <i class="fas fa-user"></i> Individual
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="btn-modo-paralelo"
+                onclick="firmadocSetModo('paralelo')" title="Varios firmantes en paralelo">
+          <i class="fas fa-users"></i> Paralelo
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="btn-modo-secuencial"
+                onclick="firmadocSetModo('secuencial')" title="Varios firmantes en secuencia">
+          <i class="fas fa-list-ol"></i> Secuencial
+        </button>
+      </div>
+    </div>
+
     <form method="post" action="{{ fsc.url() }}" id="form-firmadoc-generar">
       {{ formToken() | raw }}
       <input type="hidden" name="activetab" value="FirmaDocTab">
@@ -268,16 +253,16 @@
       <input type="hidden" name="modo_multifirma" id="input-modo-multifirma" value="unico">
 
       {# Descripción del modo seleccionado #}
-      <div id="desc-modo-unico" class="alert alert-light py-1 mb-2 small" style="display:block">
-        <i class="fas fa-user text-primary mr-1"></i>
+      <div id="desc-modo-unico" class="alert alert-light py-1 mb-2" style="display:block">
+        <i class="fas fa-user text-primary me-1"></i>
         <strong>Individual:</strong> Se envía un enlace de firma a un único destinatario.
       </div>
-      <div id="desc-modo-paralelo" class="alert alert-light py-1 mb-2 small" style="display:none">
-        <i class="fas fa-users text-success mr-1"></i>
+      <div id="desc-modo-paralelo" class="alert alert-light py-1 mb-2" style="display:none">
+        <i class="fas fa-users text-success me-1"></i>
         <strong>Paralelo:</strong> Se envían enlaces simultáneos a varios firmantes. El documento queda firmado cuando todos hayan firmado.
       </div>
-      <div id="desc-modo-secuencial" class="alert alert-light py-1 mb-2 small" style="display:none">
-        <i class="fas fa-list-ol text-warning mr-1"></i>
+      <div id="desc-modo-secuencial" class="alert alert-light py-1 mb-2" style="display:none">
+        <i class="fas fa-list-ol text-warning me-1"></i>
         <strong>Secuencial:</strong> Cada firmante recibe el enlace solo cuando el anterior ha firmado.
       </div>
 
@@ -285,33 +270,33 @@
       <div id="firmantes-container">
         {# Firmante 1 — siempre visible, datos del cliente #}
         <div class="firmante-row border rounded p-2 mb-2" id="firmante-row-1">
-          <div class="form-row align-items-end">
+          <div class="row g-2 align-items-end">
             <div class="col-auto d-none" id="col-orden-1">
-              <span class="badge badge-secondary" style="margin-top:28px">1</span>
+              <span class="badge bg-secondary">1</span>
             </div>
             <div class="col-md-3">
-              <label class="small font-weight-bold">Nombre <span class="text-danger">*</span></label>
-              <input type="text" name="firmantes[0][nombre]" class="form-control form-control-sm"
+              <label class="mb-0">Nombre <span class="text-danger">*</span></label>
+              <input type="text" name="firmantes[0][nombre]" class="form-control"
                      value="{{ view.firmadocNombre }}" placeholder="Nombre del firmante" required>
             </div>
             <div class="col-md-3">
-              <label class="small font-weight-bold">Email <span class="text-danger">*</span></label>
-              <input type="email" name="firmantes[0][email]" class="form-control form-control-sm"
+              <label class="mb-0">Email <span class="text-danger">*</span></label>
+              <input type="email" name="firmantes[0][email]" class="form-control"
                      value="{{ emailPrellenado }}" placeholder="cliente@ejemplo.com" required>
             </div>
-            <div class="col-md-3">
-              <label class="small font-weight-bold">WhatsApp</label>
-              <input type="text" name="firmantes[0][telefono]" class="form-control form-control-sm"
+            <div class="col-md-2">
+              <label class="mb-0">WhatsApp</label>
+              <input type="text" name="firmantes[0][telefono]" class="form-control"
                      value="{{ telefonoPrellenado }}" placeholder="+34 600 000 000">
             </div>
             <div class="col-md-2">
-              <label class="small font-weight-bold">Referencia</label>
-              <input type="text" name="firmantes[0][nombre_referencia]" class="form-control form-control-sm"
+              <label class="mb-0">Referencia</label>
+              <input type="text" name="firmantes[0][nombre_referencia]" class="form-control"
                      placeholder="ej: Representante">
             </div>
             <div class="col-md-1 d-none" id="col-eliminar-1">
-              <button type="button" class="btn btn-sm btn-outline-danger btn-block"
-                      style="margin-top:28px" onclick="firmadocEliminarFirmante(1)">
+              <button type="button" class="btn btn-outline-danger w-100"
+                      onclick="firmadocEliminarFirmante(1)">
                 <i class="fas fa-times"></i>
               </button>
             </div>
@@ -321,10 +306,10 @@
 
       {# Botón añadir firmante — oculto en modo unico #}
       <div id="btn-anadir-container" style="display:none" class="mb-2">
-        <button type="button" class="btn btn-sm btn-outline-success" onclick="firmadocAnadirFirmante()">
-          <i class="fas fa-plus mr-1"></i> Añadir firmante
+        <button type="button" class="btn btn-outline-success" onclick="firmadocAnadirFirmante()">
+          <i class="fas fa-plus me-1"></i> Añadir firmante
         </button>
-        <small class="text-muted ml-2">Máx. 5 firmantes</small>
+        <small class="text-muted ms-2">Máx. 5 firmantes</small>
       </div>
 
       <div class="d-flex justify-content-between align-items-center mt-2">
@@ -333,14 +318,14 @@
             Enlace(s) válidos durante {{ config.dias_validez }} días.
           {% endif %}
         </small>
-        <button type="submit" class="btn btn-primary btn-sm" {% if not view.firmadocEditable %}disabled{% endif %}>
-          <i class="fas fa-paper-plane mr-1"></i> Enviar enlace(s)
+        <button type="submit" class="btn btn-primary" {% if not view.firmadocEditable %}disabled{% endif %}>
+          <i class="fas fa-paper-plane me-1"></i> Enviar enlace(s)
         </button>
       </div>
 
       {% if not view.firmadocEditable %}
       <div class="alert alert-info py-2 mt-2 mb-0">
-        <i class="fas fa-lock mr-1"></i> El documento está en un estado que no permite solicitar firma.
+        <i class="fas fa-lock me-1"></i> El documento está en un estado que no permite solicitar firma.
       </div>
       {% endif %}
     </form>
@@ -390,19 +375,19 @@ function firmadocAnadirFirmante() {
   var seq = (_firmadocModo === 'secuencial');
 
   var html = '<div class="firmante-row border rounded p-2 mb-2" id="firmante-row-' + n + '">'
-    + '<div class="form-row align-items-end">'
+    + '<div class="row g-2 align-items-end">'
     + '<div class="col-auto ' + (seq ? '' : 'd-none') + '" id="col-orden-' + n + '">'
-    + '<span class="badge badge-secondary" style="margin-top:28px">' + n + '</span></div>'
-    + '<div class="col-md-3"><label class="small font-weight-bold">Nombre <span class=\"text-danger\">*</span></label>'
-    + '<input type="text" name="firmantes[' + idx + '][nombre]" class="form-control form-control-sm" placeholder="Nombre del firmante" required></div>'
-    + '<div class="col-md-3"><label class="small font-weight-bold">Email <span class=\"text-danger\">*</span></label>'
-    + '<input type="email" name="firmantes[' + idx + '][email]" class="form-control form-control-sm" placeholder="cliente@ejemplo.com" required></div>'
-    + '<div class="col-md-2"><label class="small font-weight-bold">WhatsApp</label>'
-    + '<input type="text" name="firmantes[' + idx + '][telefono]" class="form-control form-control-sm" placeholder="+34 600 000 000"></div>'
-    + '<div class="col-md-2"><label class="small font-weight-bold">Referencia</label>'
-    + '<input type="text" name="firmantes[' + idx + '][nombre_referencia]" class="form-control form-control-sm" placeholder="ej: Apoderado"></div>'
+    + '<span class="badge bg-secondary">' + n + '</span></div>'
+    + '<div class="col-md-3"><label class="mb-0">Nombre <span class=\"text-danger\">*</span></label>'
+    + '<input type="text" name="firmantes[' + idx + '][nombre]" class="form-control" placeholder="Nombre del firmante" required></div>'
+    + '<div class="col-md-3"><label class="mb-0">Email <span class=\"text-danger\">*</span></label>'
+    + '<input type="email" name="firmantes[' + idx + '][email]" class="form-control" placeholder="cliente@ejemplo.com" required></div>'
+    + '<div class="col-md-2"><label class="mb-0">WhatsApp</label>'
+    + '<input type="text" name="firmantes[' + idx + '][telefono]" class="form-control" placeholder="+34 600 000 000"></div>'
+    + '<div class="col-md-2"><label class="mb-0">Referencia</label>'
+    + '<input type="text" name="firmantes[' + idx + '][nombre_referencia]" class="form-control" placeholder="ej: Apoderado"></div>'
     + '<div class="col-md-1" id="col-eliminar-' + n + '">'
-    + '<button type="button" class="btn btn-sm btn-outline-danger btn-block" style="margin-top:28px" onclick="firmadocEliminarFirmante(' + n + ')">'
+    + '<button type="button" class="btn btn-outline-danger w-100" onclick="firmadocEliminarFirmante(' + n + ')">'
     + '<i class="fas fa-times"></i></button></div>'
     + '</div></div>';
 
@@ -416,48 +401,54 @@ function firmadocEliminarFirmante(n) {
   _firmadocNumFirmantes--;
 }
 
-// Validar duplicados de email y teléfono antes de enviar
-document.getElementById('form-firmadoc-generar').addEventListener('submit', function(e) {
-  var emails    = [];
-  var telefonos = [];
-  var hasDupEmail = false;
-  var hasDupTel   = false;
+// Validar duplicados de email y teléfono antes de enviar.
+// El formulario solo está en la página cuando no hay una firma en curso: en la
+// pestaña de un documento ya firmado no existe, y darlo por hecho rompía el resto
+// del script de la pestaña.
+var _firmadocForm = document.getElementById('form-firmadoc-generar');
+if (_firmadocForm) {
+  _firmadocForm.addEventListener('submit', function(e) {
+    var emails    = [];
+    var telefonos = [];
+    var hasDupEmail = false;
+    var hasDupTel   = false;
 
-  this.querySelectorAll('input[type="email"]').forEach(function(el) {
-    var v = el.value.trim().toLowerCase();
-    if (!v) return;
-    if (emails.indexOf(v) !== -1) { hasDupEmail = true; }
-    emails.push(v);
-  });
-  this.querySelectorAll('input[type="text"][name*="telefono"]').forEach(function(el) {
-    var v = el.value.trim().replace(/[\s\-]/g, '');
-    if (!v) return;
-    if (telefonos.indexOf(v) !== -1) { hasDupTel = true; }
-    telefonos.push(v);
-  });
+    this.querySelectorAll('input[type="email"]').forEach(function(el) {
+      var v = el.value.trim().toLowerCase();
+      if (!v) return;
+      if (emails.indexOf(v) !== -1) { hasDupEmail = true; }
+      emails.push(v);
+    });
+    this.querySelectorAll('input[type="text"][name*="telefono"]').forEach(function(el) {
+      var v = el.value.trim().replace(/[\s\-]/g, '');
+      if (!v) return;
+      if (telefonos.indexOf(v) !== -1) { hasDupTel = true; }
+      telefonos.push(v);
+    });
 
-  if (hasDupEmail) {
-    e.preventDefault();
-    alert('Hay emails duplicados entre los firmantes. Cada firmante debe tener un email diferente.');
-    return false;
-  }
-  if (hasDupTel) {
-    e.preventDefault();
-    alert('Hay teléfonos duplicados entre los firmantes. Cada firmante debe tener un teléfono diferente.');
-    return false;
-  }
-});
+    if (hasDupEmail) {
+      e.preventDefault();
+      alert('Hay emails duplicados entre los firmantes. Cada firmante debe tener un email diferente.');
+      return false;
+    }
+    if (hasDupTel) {
+      e.preventDefault();
+      alert('Hay teléfonos duplicados entre los firmantes. Cada firmante debe tener un teléfono diferente.');
+      return false;
+    }
+  });
+}
 </script>
 
 {# ── HISTORIAL ─── #}
 {% if firmas|length > 0 %}
-<div class="card shadow-sm">
-  <div class="card-header bg-light">
-    <h6 class="mb-0"><i class="fas fa-history mr-2"></i> Historial de envíos</h6>
+<div class="card shadow mb-3">
+  <div class="container-fluid pt-3">
+    <h3 class="h4 mb-2"><i class="fas fa-history fa-fw me-2"></i>Historial de envíos</h3>
   </div>
   <div class="table-responsive">
-    <table class="table table-sm table-hover mb-0">
-      <thead class="thead-light">
+    <table class="table table-hover mb-0">
+      <thead>
         <tr>
           <th>Estado</th>
           <th>Generado</th>
@@ -475,139 +466,113 @@ document.getElementById('form-firmadoc-generar').addEventListener('submit', func
         <tr class="{% if firma.estado == 'firmado' %}table-success{% elseif firma.estado == 'pendiente' %}table-warning{% elseif firma.estado in ['cancelado','expirado','anulado_mod'] %}table-light{% endif %}">
           <td>
             {% if firma.estado == 'firmado' %}
-              <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.82em;font-weight:600;background:#28a745;color:#fff!important">&#10003; Firmado</span>
+              <span class="badge bg-success"><i class="fas fa-check me-1"></i>Firmado</span>
             {% elseif firma.estado == 'pendiente' %}
-              <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.82em;font-weight:600;background:#007bff;color:#fff!important">&#9711; Pendiente</span>
+              <span class="badge bg-primary"><i class="fas fa-clock me-1"></i>Pendiente</span>
             {% elseif firma.estado == 'anulado_mod' %}
-              <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.82em;font-weight:600;background:#fd7e14;color:#fff!important">&#9888; Anulado</span>
+              <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Anulado</span>
             {% elseif firma.estado == 'cancelado' %}
-              <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.82em;font-weight:600;background:#dc3545;color:#fff!important">&#215; Cancelado</span>
+              <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Cancelado</span>
             {% elseif firma.estado == 'expirado' %}
-              <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.82em;font-weight:600;background:#6c757d;color:#fff!important">&#8987; Expirado</span>
+              <span class="badge bg-secondary"><i class="fas fa-hourglass-end me-1"></i>Expirado</span>
             {% else %}
-              <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.82em;font-weight:600;background:#6c757d;color:#fff!important">{{ firma.estado }}</span>
+              <span class="badge bg-secondary">{{ firma.estado }}</span>
             {% endif %}
             {# Indicador modo multi-firmante #}
             {% if firma.modo_multifirma and firma.modo_multifirma != 'unico' %}
               <br><small class="text-muted">
                 {% if firma.modo_multifirma == 'paralelo' %}
-                  <i class="fas fa-users mr-1"></i>Paralelo
+                  <i class="fas fa-users me-1"></i>Paralelo
                 {% elseif firma.modo_multifirma == 'secuencial' %}
-                  <i class="fas fa-list-ol mr-1"></i>Secuencial
+                  <i class="fas fa-list-ol me-1"></i>Secuencial
                 {% endif %}
               </small>
             {% endif %}
           </td>
-          <td><small>{{ firma.fecha_envio }}</small></td>
-          <td><small>{{ firma.email_cliente }}</small></td>
+          <td>{{ firma.fecha_envio }}</td>
+          <td>{{ firma.email_cliente }}</td>
           <td>
-            <small>
-              {% if firma.firma_nombre %}
-                <strong>{{ firma.firma_nombre }}</strong>
-                {% if firma.firma_nif %}<br>{{ firma.firma_nif }}{% endif %}
-              {% else %}
-                —
-              {% endif %}
-            </small>
+            {% if firma.firma_nombre %}
+              <strong>{{ firma.firma_nombre }}</strong>
+              {% if firma.firma_nif %}<br>{{ firma.firma_nif }}{% endif %}
+            {% else %}
+              —
+            {% endif %}
             {% if firma.estado == 'firmado' and firma.firma_imagen and (firma.modo_multifirma == 'unico' or not firma.modo_multifirma) %}
             <br>
             <button type="button" class="btn btn-sm btn-outline-success mt-1"
-                    style="font-size:0.78em;padding:1px 6px"
                     onclick="firmadocVerFirma('{{ firma.id }}')"
                     title="Ver imagen de firma">
-              <i class="fas fa-signature mr-1"></i>Ver firma
+              <i class="fas fa-signature me-1"></i>Ver firma
             </button>
             {% endif %}
           </td>
+          <td>{% if firma.fecha_firma %}{{ firma.fecha_firma }}{% else %}—{% endif %}</td>
+          <td>{{ firma.ip_cliente ?? '—' }}</td>
           <td>
-            <small>
-              {% if firma.fecha_firma %}{{ firma.fecha_firma }}{% else %}—{% endif %}
-            </small>
-          </td>
-          <td><small>{{ firma.ip_cliente ?? '—' }}</small></td>
-          <td>
-            <small>
-              {% if firma.veces_visto > 0 %}
-                <span title="Primera apertura: {{ firma.fecha_primera_apertura }}">
-                  <i class="fas fa-eye text-muted mr-1"></i>{{ firma.veces_visto }}x
-                </span>
-              {% else %}
-                <span class="text-muted">No visto</span>
-              {% endif %}
-            </small>
+            {% if firma.veces_visto > 0 %}
+              <span title="Primera apertura: {{ firma.fecha_primera_apertura }}">
+                <i class="fas fa-eye text-muted me-1"></i>{{ firma.veces_visto }}x
+              </span>
+            {% else %}
+              <span class="text-muted">No visto</span>
+            {% endif %}
           </td>
           <td>
-            <small>
-              {% if firma.observaciones_firmante %}
-                <span class="text-info" title="{{ firma.observaciones_firmante }}">
-                  <i class="fas fa-comment-alt mr-1"></i>Sí
-                </span>
-              {% elseif firma.motivo_rechazo %}
-                <span class="text-danger" title="{{ firma.motivo_rechazo }}">
-                  <i class="fas fa-times-circle mr-1"></i>Rechazado
-                </span>
-              {% else %}—{% endif %}
-            </small>
+            {% if firma.observaciones_firmante %}
+              <span class="text-info" title="{{ firma.observaciones_firmante }}">
+                <i class="fas fa-comment-alt me-1"></i>Sí
+              </span>
+            {% elseif firma.motivo_rechazo %}
+              <span class="text-danger" title="{{ firma.motivo_rechazo }}">
+                <i class="fas fa-times-circle me-1"></i>Rechazado
+              </span>
+            {% else %}—{% endif %}
           </td>
         </tr>
         {# Sub-filas de firmantes individuales si hay multi-firmante #}
         {% if firma.firmantes is defined and firma.firmantes|length > 1 %}
           {% for firmante in firma.firmantes %}
-          <tr class="bg-light" style="font-size:0.88em;">
-            <td class="pl-4">
-              <span class="text-muted mr-1">&#8627;</span>
+          <tr class="table-light">
+            <td class="ps-4">
+              <span class="text-muted me-1">&#8627;</span>
               {% if firmante.estado == 'firmado' %}
-                <span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:0.8em;font-weight:600;background:#28a745;color:#fff!important">Firmado</span>
+                <span class="badge bg-success">Firmado</span>
               {% elseif firmante.estado == 'esperando' %}
-                <span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:0.8em;font-weight:600;background:#6c757d;color:#fff!important">Esperando</span>
+                <span class="badge bg-secondary">Esperando</span>
               {% else %}
-                <span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:0.8em;font-weight:600;background:#ffc107;color:#212529!important">Pendiente</span>
+                <span class="badge bg-warning text-dark">Pendiente</span>
               {% endif %}
             </td>
             <td colspan="2">
-              <small>
-                <i class="fas fa-envelope mr-1 text-muted"></i>{{ firmante.email }}
-                {% if firmante.nombre_referencia %}
-                  <span class="text-muted ml-2">({{ firmante.nombre_referencia }})</span>
-                {% endif %}
-              </small>
-            </td>
-            <td>
-              <small>
-                {% if firmante.firma_nombre %}
-                  <strong>{{ firmante.firma_nombre }}</strong>
-                {% else %}—{% endif %}
-              </small>
-              {% if firmante.estado == 'firmado' and firmante.firma_imagen %}
-              <br>
-              <button type="button" class="btn btn-sm btn-outline-success mt-1"
-                      style="font-size:0.75em;padding:1px 5px"
-                      onclick="firmadocVerFirmaFirmante('{{ firmante.id }}')"
-                      title="Ver imagen de firma de {{ firmante.nombre }}">
-                <i class="fas fa-signature mr-1"></i>Ver
-              </button>
+              <i class="fas fa-envelope me-1 text-muted"></i>{{ firmante.email }}
+              {% if firmante.nombre_referencia %}
+                <span class="text-muted ms-2">({{ firmante.nombre_referencia }})</span>
               {% endif %}
             </td>
             <td>
-              <small>
-                {% if firmante.fecha_firma %}{{ firmante.fecha_firma }}{% else %}—{% endif %}
-              </small>
+              {% if firmante.firma_nombre %}
+                <strong>{{ firmante.firma_nombre }}</strong>
+              {% else %}—{% endif %}
+              {% if firmante.estado == 'firmado' and firmante.firma_imagen %}
+              <br>
+              <button type="button" class="btn btn-sm btn-outline-success mt-1"
+                      onclick="firmadocVerFirmaFirmante('{{ firmante.id }}')"
+                      title="Ver imagen de firma de {{ firmante.nombre }}">
+                <i class="fas fa-signature me-1"></i>Ver
+              </button>
+              {% endif %}
             </td>
+            <td>{% if firmante.fecha_firma %}{{ firmante.fecha_firma }}{% else %}—{% endif %}</td>
+            <td>{% if firmante.ip_cliente %}{{ firmante.ip_cliente }}{% else %}—{% endif %}</td>
             <td>
-              <small>
-                {% if firmante.ip_cliente %}{{ firmante.ip_cliente }}{% else %}—{% endif %}
-              </small>
-            </td>
-            <td>
-              <small>
-                {% if firmante.veces_visto > 0 %}
-                  <span title="Primera apertura: {{ firmante.fecha_primera_apertura ?? '' }}">
-                    <i class="fas fa-eye text-muted mr-1"></i>{{ firmante.veces_visto }}x
-                  </span>
-                {% else %}
-                  <span class="text-muted">No visto</span>
-                {% endif %}
-              </small>
+              {% if firmante.veces_visto > 0 %}
+                <span title="Primera apertura: {{ firmante.fecha_primera_apertura ?? '' }}">
+                  <i class="fas fa-eye text-muted me-1"></i>{{ firmante.veces_visto }}x
+                </span>
+              {% else %}
+                <span class="text-muted">No visto</span>
+              {% endif %}
             </td>
             <td></td>
           </tr>
@@ -622,14 +587,16 @@ document.getElementById('form-firmadoc-generar').addEventListener('submit', func
 
 {# ── HISTORIAL DE REENVÍOS ─── #}
 {% if view.firmadocReenvios is defined and view.firmadocReenvios|length > 0 %}
-<div class="card shadow-sm mt-3">
-  <div class="card-header bg-light d-flex justify-content-between align-items-center">
-    <h6 class="mb-0"><i class="fas fa-paper-plane mr-2"></i> Historial de envíos de email</h6>
-    <span class="badge badge-secondary">{{ view.firmadocReenvios|length }}</span>
+<div class="card shadow mb-3">
+  <div class="container-fluid pt-3">
+    <h3 class="h4 mb-2">
+      <i class="fas fa-paper-plane fa-fw me-2"></i>Historial de envíos de email
+      <span class="badge bg-secondary">{{ view.firmadocReenvios|length }}</span>
+    </h3>
   </div>
   <div class="table-responsive">
-    <table class="table table-sm table-hover mb-0" style="font-size:0.85em">
-      <thead class="thead-light">
+    <table class="table table-hover mb-0">
+      <thead>
         <tr>
           <th>Fecha</th>
           <th>Tipo</th>
@@ -640,23 +607,21 @@ document.getElementById('form-firmadoc-generar').addEventListener('submit', func
       <tbody>
         {% for r in view.firmadocReenvios %}
         <tr>
-          <td><small>{{ r.fecha }}</small></td>
+          <td>{{ r.fecha }}</td>
           <td>
             {% if r.tipo == 'inicial' %}
-              <span class="badge" style="background:#343a40;color:#fff">Inicial</span>
+              <span class="badge bg-dark">Inicial</span>
             {% elseif r.tipo == 'reenvio' %}
-              <span class="badge" style="background:#6c3483;color:#fff">Reenvío</span>
+              <span class="badge bg-info">Reenvío</span>
             {% else %}
-              <span class="badge" style="background:#1a5276;color:#fff">Secuencial</span>
+              <span class="badge bg-primary">Secuencial</span>
             {% endif %}
           </td>
           <td>
-            <small>
-              {% if r.nombre_destino %}<strong>{{ r.nombre_destino }}</strong><br>{% endif %}
-              {{ r.email_destino }}
-            </small>
+            {% if r.nombre_destino %}<strong>{{ r.nombre_destino }}</strong><br>{% endif %}
+            {{ r.email_destino }}
           </td>
-          <td><small>{{ r.nick ?: 'Sistema' }}</small></td>
+          <td>{{ r.nick ?: 'Sistema' }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -672,26 +637,26 @@ document.getElementById('form-firmadoc-generar').addEventListener('submit', func
 {# Modal principal para firmas de solicitud (modo único o cabecera) #}
 {% for firma in firmas %}
 {% if firma.estado == 'firmado' and firma.firma_imagen %}
-<div class="modal fade" id="modalFirma{{ firma.id }}" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
+<div class="modal" id="modalFirma{{ firma.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header py-2">
-        <h6 class="modal-title">
-          <i class="fas fa-signature mr-2"></i>Firma de <strong>{{ firma.firma_nombre }}</strong>
-        </h6>
-
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-signature fa-fw me-1"></i>Firma de <strong>{{ firma.firma_nombre }}</strong>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body text-center py-3" style="background:#f8f9fa">
-        <img src="{{ firma.firma_imagen }}" alt="Firma"
-             style="max-width:100%;max-height:220px;border:1px solid #dee2e6;border-radius:4px;background:#fff;padding:8px">
-        <div class="mt-2" style="font-size:0.82em;color:#555">
-          {% if firma.firma_nif %}<span class="mr-3"><i class="fas fa-id-card" style="color:#155724"></i>&nbsp;{{ firma.firma_nif }}</span>{% endif %}
-          {% if firma.fecha_firma %}<span class="mr-3"><i class="fas fa-calendar-check" style="color:#155724"></i>&nbsp;{{ firma.fecha_firma }}</span>{% endif %}
-          {% if firma.ip_cliente %}<span><i class="fas fa-map-marker-alt" style="color:#155724"></i>&nbsp;{{ firma.ip_cliente }}</span>{% endif %}
+      <div class="modal-body text-center bg-light">
+        <img src="{{ firma.firma_imagen }}" alt="Firma" class="img-fluid border rounded bg-white p-2"
+             style="max-height:220px">
+        <div class="mt-2 small text-muted">
+          {% if firma.firma_nif %}<span class="me-3"><i class="fas fa-id-card"></i>&nbsp;{{ firma.firma_nif }}</span>{% endif %}
+          {% if firma.fecha_firma %}<span class="me-3"><i class="fas fa-calendar-check"></i>&nbsp;{{ firma.fecha_firma }}</span>{% endif %}
+          {% if firma.ip_cliente %}<span><i class="fas fa-map-marker-alt"></i>&nbsp;{{ firma.ip_cliente }}</span>{% endif %}
         </div>
       </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
       </div>
     </div>
   </div>
@@ -701,27 +666,27 @@ document.getElementById('form-firmadoc-generar').addEventListener('submit', func
 {% if firma.firmantes is defined %}
 {% for firmante in firma.firmantes %}
 {% if firmante.estado == 'firmado' and firmante.firma_imagen %}
-<div class="modal fade" id="modalFirmaFirmante{{ firmante.id }}" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
+<div class="modal" id="modalFirmaFirmante{{ firmante.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header py-2">
-        <h6 class="modal-title">
-          <i class="fas fa-signature mr-2"></i>Firma de <strong>{{ firmante.firma_nombre ?: firmante.nombre }}</strong>
-          {% if firmante.nombre_referencia %}<small class="text-muted ml-2">({{ firmante.nombre_referencia }})</small>{% endif %}
-        </h6>
-
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-signature fa-fw me-1"></i>Firma de <strong>{{ firmante.firma_nombre ?: firmante.nombre }}</strong>
+          {% if firmante.nombre_referencia %}<small class="text-muted ms-2">({{ firmante.nombre_referencia }})</small>{% endif %}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body text-center py-3" style="background:#f8f9fa">
-        <img src="{{ firmante.firma_imagen }}" alt="Firma"
-             style="max-width:100%;max-height:220px;border:1px solid #dee2e6;border-radius:4px;background:#fff;padding:8px">
-        <div class="mt-2" style="font-size:0.82em;color:#555">
-          {% if firmante.firma_nif %}<span class="mr-3"><i class="fas fa-id-card" style="color:#155724"></i>&nbsp;{{ firmante.firma_nif }}</span>{% endif %}
-          {% if firmante.fecha_firma %}<span class="mr-3"><i class="fas fa-calendar-check" style="color:#155724"></i>&nbsp;{{ firmante.fecha_firma }}</span>{% endif %}
-          {% if firmante.ip_cliente %}<span><i class="fas fa-map-marker-alt" style="color:#155724"></i>&nbsp;{{ firmante.ip_cliente }}</span>{% endif %}
+      <div class="modal-body text-center bg-light">
+        <img src="{{ firmante.firma_imagen }}" alt="Firma" class="img-fluid border rounded bg-white p-2"
+             style="max-height:220px">
+        <div class="mt-2 small text-muted">
+          {% if firmante.firma_nif %}<span class="me-3"><i class="fas fa-id-card"></i>&nbsp;{{ firmante.firma_nif }}</span>{% endif %}
+          {% if firmante.fecha_firma %}<span class="me-3"><i class="fas fa-calendar-check"></i>&nbsp;{{ firmante.fecha_firma }}</span>{% endif %}
+          {% if firmante.ip_cliente %}<span><i class="fas fa-map-marker-alt"></i>&nbsp;{{ firmante.ip_cliente }}</span>{% endif %}
         </div>
       </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
       </div>
     </div>
   </div>
