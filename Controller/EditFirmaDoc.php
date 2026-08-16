@@ -383,6 +383,8 @@ class EditFirmaDoc extends EditController
         $export->newDoc($documento->codigo ?? '', 0, '');
         $export->addBusinessDocPage($documento);
         $export->addCertificadoFirma($firma, $documento);
+        // Después del certificado: así la marca alcanza también a sus páginas
+        $export->estamparMarcaLateral($firma, FirmaDocPDFExport::textoMarcaLateral($firma));
         return $export->getDoc();
     }
 

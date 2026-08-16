@@ -321,6 +321,125 @@ class FirmaDocPDFExport extends PDFExport
         }
     }
 
+    /**
+     * Estampa en el margen izquierdo de todas las páginas una línea vertical con quién
+     * firmó, cuándo y el código de verificación.
+     *
+     * Sin esto, una página suelta de un contrato de veinte no dice nada: hay que llegar
+     * al certificado del final para saber que está firmado. La marca va dentro del
+     * margen, girada 90º, así que no pisa el texto; si el margen es tan estrecho que no
+     * cabe, se deja el documento como está antes que escribir encima.
+     *
+     * Solo sirve para los documentos que genera FacturaScripts. Un PDF subido por el
+     * usuario no se puede tocar: la librería de PDF del núcleo no sabe abrir un PDF
+     * existente, y por eso esos documentos llevan el certificado unido aparte.
+     */
+    public function estamparMarcaLateral(FirmaDoc $firma, string $texto): void
+    {
+        if ($this->pdf === null || $texto === '') {
+            return;
+        }
+
+        $marginL = $this->pdf->ez['leftMargin'];
+        $pageH = $this->pdf->ez['pageHeight'];
+
+        // 14pt de separación al borde para que ninguna impresora la recorte, y el resto
+        // del margen libre para el texto del documento.
+        $x = 14.0;
+        if ($marginL < 28) {
+            return;
+        }
+
+        // Las páginas ya creadas no se pueden alcanzar con addObject(), que solo llega a
+        // la actual y a las futuras. Los identificadores de página son internos de la
+        // librería, así que se leen atados a ella; escribir en ellas ya es API pública.
+        $paginas = \Closure::bind(function () {
+            $resultado = [];
+            foreach ($this->objects as $id => $objeto) {
+                if (($objeto['t'] ?? '') === 'page' && !empty($objeto['info']['contents'][0])) {
+                    $resultado[(int) $objeto['info']['pageNum']] = $objeto['info']['contents'][0];
+                }
+            }
+            ksort($resultado);
+            return $resultado;
+        }, $this->pdf, get_class($this->pdf))();
+
+        $total = count($paginas);
+        if ($total === 0) {
+            return;
+        }
+
+        $tamano = 6.0;
+        $desde = 40.0;
+        $hasta = $pageH - 40.0;
+
+        foreach ($paginas as $numero => $idContenido) {
+            $this->pdf->reopenObject($idContenido);
+            $this->pdf->saveState();
+            $this->pdf->setColor(0.45, 0.45, 0.45);
+
+            $completo = $texto . '  ·  ' . Tools::lang()->trans('firmadoc-pdf-page-of', [
+                '%page%' => $numero,
+                '%total%' => $total,
+            ]);
+
+            // Girado, la librería de PDF solo pinta los primeros 40 puntos de cada
+            // llamada y descarta el resto en silencio, así que el texto se escribe por
+            // trozos cortos encadenando la posición. A -90 grados avanza hacia arriba,
+            // que es como se lee un lateral izquierdo.
+            $y = $desde;
+            $trozos = preg_split('/(.{10})/u', $completo, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+            foreach ($trozos as $trozo) {
+                $ancho = $this->pdf->getTextWidth($tamano, $trozo);
+                if ($y + $ancho > $hasta) {
+                    break;
+                }
+                $this->pdf->addText($x, $y, $tamano, $trozo, 0, 'left', -90);
+                $y += $ancho;
+            }
+
+            $this->pdf->setColor(0, 0, 0);
+            $this->pdf->restoreState();
+            $this->pdf->closeObject();
+        }
+    }
+
+    /**
+     * Texto de la marca lateral: quién ha firmado, cuándo y con qué código se comprueba.
+     */
+    public static function textoMarcaLateral(FirmaDoc $firma): string
+    {
+        $firmantes = FirmaDocFirmante::porSolicitud($firma->id);
+        $nombres = [];
+        foreach ($firmantes as $f) {
+            if ($f->estado !== FirmaDocFirmante::ESTADO_FIRMADO) {
+                continue;
+            }
+            $nombres[] = trim((string) ($f->firma_nombre ?: $f->nombre ?: $f->email));
+        }
+        if (empty($nombres) && !empty($firma->firma_nombre)) {
+            $nombres[] = (string) $firma->firma_nombre;
+        }
+        if (empty($nombres)) {
+            return '';
+        }
+
+        $partes = [
+            Tools::lang()->trans('firmadoc-pdf-side-signed-by', [
+                '%signers%' => implode(', ', $nombres),
+            ]),
+        ];
+        if (!empty($firma->fecha_firma)) {
+            $partes[] = $firma->fecha_firma;
+        }
+        if (!empty($firma->codigo_verificacion)) {
+            $partes[] = Tools::lang()->trans('firmadoc-verification-code')
+                . ': ' . $firma->codigo_verificacion;
+        }
+
+        return implode('  ·  ', $partes);
+    }
+
     // ── Helpers privados ──────────────────────────────────────────────────────
 
     /**

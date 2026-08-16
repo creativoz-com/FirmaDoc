@@ -164,6 +164,8 @@
     "firmadoc-pdf-date-time": "Fecha y hora",
     "firmadoc-pdf-signer-ip": "IP del firmante",
     "firmadoc-pdf-signature": "FIRMA",
+    "firmadoc-pdf-side-signed-by": "Firmado electrónicamente por %signers%",
+    "firmadoc-pdf-page-of": "pág. %page% de %total%",
     "firmadoc-pdf-legal-accepted": "El firmante declara haber leido y aceptado el contenido del documento.",
     "firmadoc-pdf-eidas-valid": "Firma electronica simple con evidencias de identificacion y trazabilidad. Hash: %hash%",
     "firmadoc-pdf-generated-by": "Generado por FirmaDoc",

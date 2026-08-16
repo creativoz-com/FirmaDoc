@@ -231,6 +231,8 @@ class FirmaDocPublic extends Controller
 
         if ($firma->estado === FirmaDoc::ESTADO_FIRMADO) {
             $export->addCertificadoFirma($firma, $documento);
+            // Después del certificado: así la marca alcanza también a sus páginas
+            $export->estamparMarcaLateral($firma, FirmaDocPDFExport::textoMarcaLateral($firma));
         }
 
         return $export->getDoc();
