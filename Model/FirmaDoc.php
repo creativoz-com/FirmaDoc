@@ -444,16 +444,10 @@ class FirmaDoc extends ModelClass
     public function url(string $type = 'auto', string $list = 'List'): string
     {
         if ($type === 'new') {
-            // Desde la ficha de un tercero, el envío es una pestaña de esa misma ficha:
-            // así no se pierde su menú lateral ni hay que volver sobre los pasos.
-            if (!empty($this->codcliente)) {
-                return 'EditCliente?code=' . rawurlencode($this->codcliente)
-                    . '&activetab=FirmaDocEnviarTercero';
-            }
-            if (!empty($this->codproveedor)) {
-                return 'EditProveedor?code=' . rawurlencode($this->codproveedor)
-                    . '&activetab=FirmaDocEnviarTercero';
-            }
+            // Sin parámetros a propósito: el botón «+» de un listado le concatena los
+            // filtros con un «?», así que una URL que ya llevase interrogante saldría
+            // partida. Desde la ficha de un tercero no se usa este botón, sino el
+            // enlace a su pestaña de envío que pone FirmaDocClienteExtension.
             return 'FirmaDocSubir';
         }
 

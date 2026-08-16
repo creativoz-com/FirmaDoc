@@ -71,9 +71,19 @@ class FirmaDocClienteExtension
             if ($viewName === 'ListFirmaDocTercero') {
                 $view->loadData('', [new DataBaseWhere($campo, $codigo)]);
 
-                // El botón «+» del listado se construye con el url('new') de este modelo:
-                // dejándole el código, lleva a la pestaña de envío de esta misma ficha.
-                $view->model->{$campo} = $codigo;
+                // El «+» de serie lleva a la pantalla suelta y además sale roto: el
+                // núcleo le pega los filtros del listado con un «?», y la dirección de
+                // la pestaña ya lleva los suyos. Se sustituye por un enlace directo a
+                // la pestaña de envío de esta misma ficha.
+                $view->settings['btnNew'] = false;
+                $this->tab($viewName)->addButton([
+                    'type' => 'link',
+                    'action' => ($esProveedor ? 'EditProveedor?code=' : 'EditCliente?code=')
+                        . rawurlencode($codigo) . '&activetab=FirmaDocEnviarTercero',
+                    'color' => 'success',
+                    'icon' => 'fas fa-plus',
+                    'label' => 'firmadoc-upload-document',
+                ]);
                 return;
             }
 
