@@ -14,6 +14,7 @@ use FacturaScripts\Core\Base\Controller;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocFirmante;
 
@@ -45,6 +46,9 @@ class FirmaDocVerify extends Controller
     /** @var string */
     public $mensajeTipo = '';
 
+    /** @var string Raíz de la instalación, para servir los estilos sin salir a internet */
+    public $urlBase = '';
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
@@ -59,6 +63,7 @@ class FirmaDocVerify extends Controller
     {
         parent::publicCore($response);
         $this->procesarVerificacion();
+        $this->urlBase = FirmaDocUrl::base();
         $this->setTemplate('FirmaDocVerify');
     }
 
@@ -66,6 +71,7 @@ class FirmaDocVerify extends Controller
     {
         parent::privateCore($response, $user, $permissions);
         $this->procesarVerificacion();
+        $this->urlBase = FirmaDocUrl::base();
         $this->setTemplate('FirmaDocVerify');
     }
 

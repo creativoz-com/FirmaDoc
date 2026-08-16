@@ -13,8 +13,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ trans('firmadoc-verify-title') }}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    {# Desde la propia instalación, no desde un CDN: el portal de verificación tiene
+       que funcionar también sin salida a internet. #}
+    <link rel="stylesheet" href="{{ fsc.urlBase }}/node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ fsc.urlBase }}/node_modules/@fortawesome/fontawesome-free/css/all.min.css">
     <style>
         body { background: #f5f6fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .firma-card { max-width: 680px; margin: 30px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); overflow: hidden; }
@@ -58,7 +60,7 @@
 
     {# CABECERA #}
     <div class="firma-header">
-        <h1><i class="fas fa-shield-alt mr-2"></i> {{ trans('firmadoc-verify-header') }}</h1>
+        <h1><i class="fas fa-shield-alt me-2"></i> {{ trans('firmadoc-verify-header') }}</h1>
         <p>{{ trans('firmadoc-verify-subtitle') }}</p>
     </div>
 
@@ -101,7 +103,7 @@
                 </tr>
                 <tr>
                     <td>{{ trans('firmadoc-verify-status') }}</td>
-                    <td><span class="badge badge-success"><i class="fas fa-check mr-1"></i>{{ trans('firmadoc-verify-verified') }}</span></td>
+                    <td><span class="badge bg-success"><i class="fas fa-check me-1"></i>{{ trans('firmadoc-verify-verified') }}</span></td>
                 </tr>
                 <tr>
                     <td>{{ trans('firmadoc-verify-sign-date') }}</td>
@@ -113,10 +115,10 @@
         {# Firmantes — datos enmascarados en el controlador: esta pantalla es pública #}
         {% if fsc.firmantesPublicos|length > 0 %}
         <div class="signers-section">
-            <h3><i class="fas fa-users mr-1"></i> {{ trans('firmadoc-verify-signers') }}</h3>
+            <h3><i class="fas fa-users me-1"></i> {{ trans('firmadoc-verify-signers') }}</h3>
             {% for firmante in fsc.firmantesPublicos %}
             <div class="signer-item">
-                <div class="signer-name"><i class="fas fa-user-check text-success mr-1"></i> {{ firmante.nombre }}</div>
+                <div class="signer-name"><i class="fas fa-user-check text-success me-1"></i> {{ firmante.nombre }}</div>
                 {% if firmante.nif %}
                 <div class="signer-detail"><strong>{{ trans('firmadoc-verify-signer-nif') }}:</strong> {{ firmante.nif }}</div>
                 {% endif %}
@@ -124,7 +126,7 @@
             </div>
             {% endfor %}
             <p class="text-muted small mt-2 mb-0">
-                <i class="fas fa-user-shield mr-1"></i> {{ trans('firmadoc-verify-masked-note') }}
+                <i class="fas fa-user-shield me-1"></i> {{ trans('firmadoc-verify-masked-note') }}
             </p>
         </div>
         {% endif %}
@@ -137,7 +139,7 @@
 
         {# eIDAS #}
         <div class="text-center mt-3">
-            <small class="text-muted"><i class="fas fa-certificate mr-1"></i> {{ trans('firmadoc-verify-eidas') }}</small>
+            <small class="text-muted"><i class="fas fa-certificate me-1"></i> {{ trans('firmadoc-verify-eidas') }}</small>
         </div>
 
         {# DOCUMENTO PENDIENTE #}
@@ -158,7 +160,7 @@
                 </tr>
                 <tr>
                     <td>{{ trans('firmadoc-verify-status') }}</td>
-                    <td><span class="badge badge-warning">{{ trans('firmadoc-verify-pending') }}</span></td>
+                    <td><span class="badge bg-warning">{{ trans('firmadoc-verify-pending') }}</span></td>
                 </tr>
             </table>
         </div>
@@ -187,7 +189,7 @@
 
     {# PIE #}
     <div class="firma-footer">
-        <i class="fas fa-shield-alt mr-1"></i> {{ trans('firmadoc-verify-footer') }} &middot; {{ trans('firmadoc-secure-signature') }}
+        <i class="fas fa-shield-alt me-1"></i> {{ trans('firmadoc-verify-footer') }} &middot; {{ trans('firmadoc-secure-signature') }}
     </div>
 
 </div>
