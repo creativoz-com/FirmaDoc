@@ -41,14 +41,18 @@ class FirmaDocClienteExtension
                 ->addOrderBy(['fecha_firma'], 'firmadoc-sign-date')
                 ->addSearchFields(['titulo', 'codigo_doc', 'email_cliente']);
 
-            // El formulario de envío, como una pestaña más de la ficha
-            $this->addHtmlView(
-                'FirmaDocEnviarTercero',
-                'FirmaDocEnviarTercero',
-                'FirmaDoc',
-                'firmadoc-upload-document',
-                'fas fa-paper-plane'
-            );
+            // El formulario de envío solo se monta cuando se llega a él desde el botón
+            // del listado. Tenerlo fijo en el menú lateral sería una segunda puerta al
+            // mismo sitio, y ese sitio ya tiene la suya.
+            if ($this->request->get('activetab', '') === 'FirmaDocEnviarTercero') {
+                $this->addHtmlView(
+                    'FirmaDocEnviarTercero',
+                    'FirmaDocEnviarTercero',
+                    'FirmaDoc',
+                    'firmadoc-upload-document',
+                    'fas fa-paper-plane'
+                );
+            }
         };
     }
 
@@ -82,7 +86,11 @@ class FirmaDocClienteExtension
                         . rawurlencode($codigo) . '&activetab=FirmaDocEnviarTercero',
                     'color' => 'success',
                     'icon' => 'fas fa-plus',
-                    'label' => 'firmadoc-upload-document',
+                    // Los listados recortan las etiquetas largas a ocho caracteres, y
+                    // «Enviar documento a firma» quedaba en «Document...». La frase
+                    // entera va en el título, que es donde sí cabe.
+                    'label' => 'new',
+                    'title' => 'firmadoc-upload-document',
                 ]);
                 return;
             }
