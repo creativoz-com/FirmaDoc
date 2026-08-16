@@ -434,6 +434,23 @@ class FirmaDoc extends ModelClass
     }
 
     /**
+     * El botón «+» de los listados llama a url('new'). Una solicitud de firma no se
+     * crea rellenando una ficha en blanco —necesita ficheros, huella y firmantes—,
+     * así que se lleva a la pantalla de subida.
+     *
+     * Ojo con el segundo parámetro: es el PREFIJO al que se concatena el nombre del
+     * modelo ('List' + 'FirmaDoc'), no el nombre del controlador.
+     */
+    public function url(string $type = 'auto', string $list = 'List'): string
+    {
+        if ($type === 'new') {
+            return 'FirmaDocSubir';
+        }
+
+        return parent::url($type, $list);
+    }
+
+    /**
      * Adjuntos de la solicitud. Vacío en las firmas de un solo documento, que siguen
      * apuntando al fichero desde id_doc.
      *

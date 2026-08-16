@@ -75,38 +75,20 @@
 
         <div class="card shadow-sm mb-3">
           <div class="card-header">
-            <i class="fas fa-file-pdf mr-2"></i>{{ trans('firmadoc-upload-document') }}
+            <i class="fas fa-file-signature mr-2"></i>{{ trans('firmadoc-upload-document') }}
           </div>
           <div class="card-body">
-            <div class="form-row">
-              <div class="form-group col-md-7">
-                <label for="documentos">{{ trans('firmadoc-upload-file') }} <span class="text-danger">*</span></label>
-                <input type="file" name="documentos[]" id="documentos" accept="application/pdf"
-                       class="form-control-file" multiple required>
-                <small class="form-text text-muted">{{ trans('firmadoc-upload-help') }}</small>
-              </div>
-              <div class="form-group col-md-5">
-                <label for="titulo">{{ trans('firmadoc-upload-doc-title') }}</label>
-                <input type="text" name="titulo" id="titulo" class="form-control" maxlength="200"
-                       placeholder="{{ trans('firmadoc-upload-title-placeholder') }}">
-              </div>
-            </div>
-            {# Los anexos no se firman: solo acompañan. La distinción es jurídica, así
-               que va en un campo aparte y no en una casilla junto a cada fichero. #}
-            <div class="form-row">
-              <div class="form-group col-12">
-                <label for="anexos">{{ trans('firmadoc-annexes') }}</label>
-                <input type="file" name="anexos[]" id="anexos" accept="application/pdf"
-                       class="form-control-file" multiple>
-                <small class="form-text text-muted">{{ trans('firmadoc-annexes-help') }}</small>
-              </div>
+
+            {# 1. De qué va el envío #}
+            <div class="form-group">
+              <label for="titulo">{{ trans('firmadoc-upload-doc-title') }}</label>
+              <input type="text" name="titulo" id="titulo" class="form-control" maxlength="200"
+                     placeholder="{{ trans('firmadoc-upload-title-placeholder') }}">
             </div>
 
-            {# Asociar con cliente o proveedor: es lo que permite luego encontrar el
-               documento desde su ficha y filtrar el listado general. #}
+            {# 2. A quién va. Asociarlo es lo que permite luego encontrarlo desde la
+                  ficha del tercero y filtrar el listado general. #}
             <div class="form-row">
-              {# Con cientos de terceros un desplegable suelto es inservible: encima
-                 va un buscador que filtra la lista según se escribe. #}
               <div class="form-group col-md-6">
                 <label for="buscar-cliente">{{ trans('customer') }}</label>
                 <input type="search" id="buscar-cliente" class="form-control form-control-sm mb-1"
@@ -134,6 +116,27 @@
                 </select>
               </div>
             </div>
+
+            <hr class="my-3">
+
+            {# 3. Los ficheros. Lo que se firma y lo que solo acompaña van en campos
+                  distintos porque la diferencia es jurídica. #}
+            <div class="form-group">
+              <label for="documentos">
+                {{ trans('firmadoc-upload-file') }} <span class="text-danger">*</span>
+              </label>
+              <input type="file" name="documentos[]" id="documentos" accept="application/pdf"
+                     class="form-control-file" multiple required>
+              <small class="form-text text-muted">{{ trans('firmadoc-upload-help') }}</small>
+            </div>
+
+            <div class="form-group mb-0">
+              <label for="anexos">{{ trans('firmadoc-annexes') }}</label>
+              <input type="file" name="anexos[]" id="anexos" accept="application/pdf"
+                     class="form-control-file" multiple>
+              <small class="form-text text-muted">{{ trans('firmadoc-annexes-help') }}</small>
+            </div>
+
           </div>
         </div>
 
