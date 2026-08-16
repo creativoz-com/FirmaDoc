@@ -80,7 +80,56 @@ class EditFirmaDoc extends EditController
             default:
                 parent::loadData($viewName, $view);
                 $this->prepararEnlaces();
+                $this->prepararBotones($viewName, $view);
                 break;
+        }
+    }
+
+    /**
+     * Añade solo los botones que tienen sentido para el estado del registro.
+     *
+     * Antes estaban fijos en el XMLView y salían siempre: pulsar «descargar firmado»
+     * en algo aún sin firmar solo servía para llevarse un aviso.
+     */
+    private function prepararBotones(string $viewName, $view): void
+    {
+        $firma = $view->model;
+        if (empty($firma->id)) {
+            return;
+        }
+
+        if ($firma->estado === FirmaDoc::ESTADO_FIRMADO) {
+            $this->tab($viewName)
+                ->addButton([
+                    'action' => 'firmadoc-descargar',
+                    'color' => 'success',
+                    'icon' => 'fas fa-file-download',
+                    'label' => 'firmadoc-download-signed',
+                ])
+                ->addButton([
+                    'action' => 'firmadoc-enviar-firmado',
+                    'color' => 'primary',
+                    'icon' => 'fas fa-envelope',
+                    'label' => 'firmadoc-email-signed',
+                ]);
+            return;
+        }
+
+        if ($firma->estado === FirmaDoc::ESTADO_PENDIENTE) {
+            $this->tab($viewName)
+                ->addButton([
+                    'action' => 'firmadoc-reenviar',
+                    'color' => 'info',
+                    'icon' => 'fas fa-paper-plane',
+                    'label' => 'firmadoc-resend-email',
+                ])
+                ->addButton([
+                    'action' => 'firmadoc-cancelar',
+                    'color' => 'warning',
+                    'confirm' => true,
+                    'icon' => 'fas fa-ban',
+                    'label' => 'firmadoc-send-cancel-request',
+                ]);
         }
     }
 
@@ -111,8 +160,11 @@ class EditFirmaDoc extends EditController
                 return true;
 
             case 'firmadoc-descargar':
-                $this->descargarAction();
-                return false;
+                // Solo se corta el flujo si de verdad se ha servido el PDF. Si no
+                // —documento sin firmar, fichero ausente—, hay que dejar que la ficha
+                // se cargue con normalidad; devolver false siempre la dejaba vacía,
+                // como si fuese un registro nuevo.
+                return !$this->descargarAction();
 
             case 'firmadoc-enviar-firmado':
                 $this->enviarFirmadoAction();
@@ -144,16 +196,16 @@ class EditFirmaDoc extends EditController
      * Sirve el documento firmado con su certificado, sin pasar por el enlace público:
      * desde dentro del ERP no hace falta el token.
      */
-    private function descargarAction(): void
+    private function descargarAction(): bool
     {
         $firma = $this->firmaDeLaPeticion();
         if (null === $firma) {
-            return;
+            return false;
         }
 
         $pdf = $this->generarPdfFirmado($firma);
         if ($pdf === '') {
-            return;
+            return false;
         }
 
         $nombre = $this->nombreFicheroFirmado($firma);
@@ -162,6 +214,8 @@ class EditFirmaDoc extends EditController
         $this->response->headers->set('Content-Type', 'application/pdf');
         $this->response->headers->set('Content-Disposition', 'attachment; filename="' . $nombre . '"');
         $this->response->setContent($pdf);
+
+        return true;
     }
 
     /**

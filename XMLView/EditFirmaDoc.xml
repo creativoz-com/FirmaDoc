@@ -101,16 +101,9 @@
         </group>
     </columns>
     <rows>
-        <row type="actions">
-            <button type="action" action="firmadoc-descargar" color="success"
-                    icon="fas fa-file-download" label="firmadoc-download-signed"/>
-            <button type="action" action="firmadoc-enviar-firmado" color="primary"
-                    icon="fas fa-envelope" label="firmadoc-email-signed"/>
-            <button type="action" action="firmadoc-reenviar" color="info"
-                    icon="fas fa-paper-plane" label="firmadoc-resend-email"/>
-            <button type="action" action="firmadoc-cancelar" color="warning"
-                    icon="fas fa-ban" label="firmadoc-send-cancel-request"
-                    confirm="true"/>
-        </row>
+        <!-- La fila tiene que existir para que el controlador pueda añadirle botones:
+             addButton() no crea la fila, solo escribe en ella si ya está. Los botones
+             se añaden desde loadData() según el estado del registro. -->
+        <row type="actions"/>
     </rows>
 </view>
