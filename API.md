@@ -120,6 +120,7 @@ $pdf = FirmaDocApi::wordAPdf('/ruta/contrato.docx', $error);
 ```
 
 Si el servidor tiene LibreOffice se usa; si no, la conversión la hace FirmaDoc y
-conserva texto, negrita, títulos, listas y tablas, pero no la maquetación exacta ni
-las imágenes. Con `{{firma.aqui}}` se usa siempre la conversión propia, porque hay que
+conserva texto, negrita, títulos, listas, tablas e imágenes —incluido el logotipo de la
+cabecera—, pero no la maquetación exacta: columnas, cuadros de texto y pie de página no
+se reproducen. Con `{{firma.aqui}}` se usa siempre la conversión propia, porque hay que
 saber dónde quedó el recuadro.

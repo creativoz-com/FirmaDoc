@@ -22,9 +22,10 @@ use FacturaScripts\Core\Tools;
  *
  * Si el servidor tiene LibreOffice se usa, porque conserva la maquetación tal cual.
  * Si no lo tiene —que es lo normal en un alojamiento compartido—, se pinta aquí con
- * la librería de PDF que ya trae FacturaScripts: sale un documento limpio con los
- * párrafos, la negrita, los títulos, las listas y las tablas, pero no reproduce
- * columnas, cabeceras ni imágenes. Por eso conviene revisar el PDF antes de enviarlo.
+ * la librería de PDF que ya trae FacturaScripts: salen los párrafos, la negrita, los
+ * títulos, las listas, las tablas y las imágenes, incluido el logotipo de la cabecera.
+ * No se reproducen columnas, cuadros de texto ni el pie de página, así que conviene
+ * revisar el PDF antes de enviarlo.
  */
 class FirmaDocWordPdf
 {
@@ -245,6 +246,12 @@ class FirmaDocWordPdf
                 continue;
             }
 
+            if ($bloque['tipo'] === 'imagen') {
+                $contadores = [];
+                $this->pintarImagenDelDocumento($pdf, $bloque);
+                continue;
+            }
+
             // Las listas numeradas cuentan por nivel, y el contador se reinicia en
             // cuanto aparece algo que no es de la lista.
             if (empty($bloque['lista'])) {
@@ -398,7 +405,7 @@ class FirmaDocWordPdf
         $base = $arriba - $alto;
 
         if ($firma && !empty($firma['imagen'])) {
-            $this->pintarImagenFirma($pdf, (string) $firma['imagen'], $x, $base + 4, $ancho, $alto - 6);
+            $this->pintarImagen($pdf, (string) $firma['imagen'], $x, $base + 4, $ancho, $alto - 6);
         }
 
         // La línea sobre la que se firma
@@ -431,10 +438,90 @@ class FirmaDocWordPdf
     }
 
     /**
-     * Pinta la rúbrica, que llega como data URI desde el navegador del firmante.
+     * Una imagen del propio documento: el logotipo de la cabecera, un sello, un plano.
+     *
+     * Se respeta el tamaño que le dio Word, reduciéndola si no cabe a lo ancho. Si no
+     * viene tamaño, se usa el suyo propio a 96 puntos por pulgada, que es como las
+     * cuenta Word.
      */
-    private function pintarImagenFirma(Cezpdf $pdf, string $dataUri, float $x, float $y, float $ancho, float $alto): void
+    private function pintarImagenDelDocumento(Cezpdf $pdf, array $bloque): void
     {
+        $margen = (float) self::MARGEN;
+        $anchoUtil = $pdf->ez['pageWidth'] - ($margen * 2);
+
+        $medidas = $this->medidasDe((string) $bloque['datos']);
+        if (null === $medidas) {
+            return;
+        }
+
+        $ancho = (float) ($bloque['ancho'] ?? 0);
+        $alto = (float) ($bloque['alto'] ?? 0);
+        if ($ancho <= 0 || $alto <= 0) {
+            $ancho = $medidas[0] * 0.75;
+            $alto = $medidas[1] * 0.75;
+        }
+
+        if ($ancho > $anchoUtil) {
+            $alto *= $anchoUtil / $ancho;
+            $ancho = $anchoUtil;
+        }
+
+        // Una imagen no se parte por la mitad entre dos páginas
+        if ($pdf->y - $alto < $margen) {
+            $pdf->ezNewPage();
+        }
+
+        switch ($bloque['alineacion'] ?? 'left') {
+            case 'center':
+                $x = $margen + (($anchoUtil - $ancho) / 2);
+                break;
+            case 'right':
+                $x = $margen + $anchoUtil - $ancho;
+                break;
+            default:
+                $x = $margen;
+        }
+
+        $pdf->ezSetDy(-4);
+        $this->pintarImagen($pdf, (string) $bloque['datos'], $x, $pdf->y - $alto, $ancho, $alto, false);
+        $pdf->ezSetY($pdf->y - $alto - 6);
+    }
+
+    /**
+     * Ancho y alto en píxeles de una imagen en data URI, o null si no se puede leer.
+     */
+    private function medidasDe(string $dataUri): ?array
+    {
+        if (strpos($dataUri, 'base64,') === false) {
+            return null;
+        }
+
+        $binario = base64_decode(substr($dataUri, strpos($dataUri, 'base64,') + 7), true);
+        if (empty($binario)) {
+            return null;
+        }
+
+        $medidas = @getimagesizefromstring($binario);
+
+        return (false === $medidas || empty($medidas[0])) ? null : $medidas;
+    }
+
+    /**
+     * Pinta una imagen que llega como data URI: la rúbrica del firmante o una del
+     * propio documento.
+     *
+     * @param bool $encajar si true, se reduce para caber en el hueco sin deformarse;
+     *                      si false, se pinta con el tamaño que se le indica
+     */
+    private function pintarImagen(
+        Cezpdf $pdf,
+        string $dataUri,
+        float $x,
+        float $y,
+        float $ancho,
+        float $alto,
+        bool $encajar = true
+    ): void {
         if (strpos($dataUri, 'base64,') === false) {
             return;
         }
@@ -445,7 +532,7 @@ class FirmaDocWordPdf
         }
 
         // La librería solo sabe leer imágenes de fichero, así que hay que dejarla en uno
-        $temporal = FS_FOLDER . '/MyFiles/Cache/firmadoc-rubrica-' . uniqid() . '.png';
+        $temporal = FS_FOLDER . '/MyFiles/Cache/firmadoc-img-' . uniqid() . '.tmp';
         if (false === @file_put_contents($temporal, $binario)) {
             return;
         }
@@ -456,10 +543,13 @@ class FirmaDocWordPdf
             return;
         }
 
-        // Se encaja dentro del recuadro sin deformarla
-        $escala = min($ancho / $medidas[0], $alto / $medidas[1], 1.0);
-        $w = $medidas[0] * $escala;
-        $h = $medidas[1] * $escala;
+        $w = $ancho;
+        $h = $alto;
+        if ($encajar) {
+            $escala = min($ancho / $medidas[0], $alto / $medidas[1], 1.0);
+            $w = $medidas[0] * $escala;
+            $h = $medidas[1] * $escala;
+        }
 
         try {
             if (($medidas[2] ?? 0) === IMAGETYPE_JPEG) {

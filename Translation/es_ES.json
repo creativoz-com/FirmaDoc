@@ -494,7 +494,7 @@
     "firmadoc-word-not-docx": "Solo se admiten documentos .docx. Los .doc antiguos hay que guardarlos antes como .docx.",
     "firmadoc-word-empty": "El documento de Word no tiene contenido.",
     "firmadoc-word-failed": "No se ha podido convertir el documento de Word a PDF.",
-    "firmadoc-word-review": "El documento de Word se ha convertido a PDF en el propio servidor. Se conservan el texto, los títulos, las listas y las tablas, pero no la maquetación exacta ni las imágenes. Revisa el PDF antes de que lo firmen: es lo que verá el firmante y lo que queda sellado.",
+    "firmadoc-word-review": "El documento de Word se ha convertido a PDF en el propio servidor. Se conservan el texto, los títulos, las listas, las tablas y las imágenes, pero no la maquetación exacta: columnas, cuadros de texto y el pie de página no se reproducen. Revisa el PDF antes de que lo firmen: es lo que verá el firmante y lo que queda sellado.",
     "firmadoc-already-signed": "Este documento ya está firmado.",
     "firmadoc-only-when-pending": "Solo se puede hacer mientras la firma está pendiente.",
     "firmadoc-cannot-delete-signed": "No se borra una firma ya completada: es la prueba de que alguien firmó.",

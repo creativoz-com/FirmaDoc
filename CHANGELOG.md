@@ -1,5 +1,18 @@
 # Registro de cambios
 
+## 1.5.1
+
+- La conversión de Word **conserva las imágenes**, incluido el logotipo del membrete,
+  que vive en un fichero aparte de Word y se perdía entero. Se respeta el tamaño y la
+  alineación que les dio Word, y se reducen si no caben a lo ancho.
+
+  Esto deshace la disyuntiva que dejaba la 1.5: un contrato con logotipo y con
+  `{{firma.aqui}}` ya no obliga a elegir entre una cosa y la otra, ni a instalar
+  LibreOffice en el servidor.
+
+  Sigue sin reproducirse la maquetación fina —columnas, cuadros de texto, pie de
+  página—, y el aviso que sale al convertir ya lo dice con precisión.
+
 ## 1.5
 
 ### Envío de documentos propios
@@ -10,7 +23,7 @@
   instalar nada: si el servidor tiene LibreOffice se usa, y si no, la conversión la
   resuelve el propio plugin con lo que ya trae PHP. Se conservan párrafos, alineación,
   negrita, cursiva, títulos, listas —numeradas y de viñeta— y tablas; no la maquetación
-  exacta ni las imágenes, y en ese caso se avisa de que conviene repasar el PDF.
+  exacta, y en ese caso se avisa de que conviene repasar el PDF.
 - La etiqueta **`{{firma.aqui}}`** en la plantilla marca dónde va el recuadro de firma,
   y `{{firma.aqui:2}}` de qué firmante es. Antes de firmar se ve la línea con su rótulo;
   al firmar, la rúbrica queda dentro con el nombre, el documento de identidad y la fecha.

@@ -73,6 +73,7 @@ lo tiene, y si no la resuelve el propio plugin.
 ## Características principales
 - Firma manuscrita y tipográfica, con identificación opcional mediante certificado digital (AutoFirma/FNMT)
 - Envío a firma de documentos propios: PDF y Word (.docx), que se convierte a PDF
+  conservando texto, títulos, listas, tablas e imágenes, logotipo de cabecera incluido
 - Etiqueta `{{firma.aqui}}` en la plantilla de Word para colocar el recuadro de firma
 - Marca de firma en el margen de cada página del documento firmado
 - Pensado para que otros plugins lo usen: véase [API.md](API.md)

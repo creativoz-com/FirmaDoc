@@ -40,11 +40,25 @@ class FirmaDocWordLector
      */
     const ANCLA = '/\{\{\s*firma\.aqui(?::\s*(\d+))?\s*\}\}/i';
 
+    /** Namespaces del dibujo y de las relaciones, para llegar a las imágenes */
+    const NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+    const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const NS_WP = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
+
+    /** Word mide en EMU: 12700 por punto */
+    const EMU = 12700;
+
+    /** Tope por imagen. Una foto de varios megas no aporta nada a un contrato */
+    const MAX_IMAGEN = 4194304;
+
     /** @var DOMXPath */
     private $xpath;
 
     /** @var array Formato de cada lista, por numId: 'vineta' o 'numero' */
     private $formatoListas = [];
+
+    /** @var array Imágenes del documento, por identificador de relación */
+    private $imagenes = [];
 
     /** @var string Último error, para poder explicarlo */
     private $error = '';
@@ -110,6 +124,8 @@ class FirmaDocWordLector
         }
 
         $this->leerFormatoDeListas($zip->getFromName('word/numbering.xml'));
+        $this->leerImagenes($zip);
+        $membrete = $this->leerMembrete($zip);
         $zip->close();
 
         $dom = new DOMDocument();
@@ -132,13 +148,19 @@ class FirmaDocWordLector
             return null;
         }
 
-        $bloques = [];
+        $bloques = $membrete;
         foreach ($cuerpo->childNodes as $nodo) {
             if (!$nodo instanceof DOMElement) {
                 continue;
             }
 
             if ($nodo->localName === 'p') {
+                // Las imágenes salen antes que el texto del párrafo, que es donde las
+                // pone Word cuando el párrafo es solo el logotipo o una firma escaneada
+                foreach ($this->leerImagenesDe($nodo) as $imagen) {
+                    $bloques[] = $imagen;
+                }
+
                 $bloque = $this->leerParrafo($nodo);
                 if (null !== $bloque) {
                     foreach ($this->partirPorAncla($bloque) as $trozo) {
@@ -401,5 +423,183 @@ class FirmaDocWordLector
         }
 
         return ['tipo' => 'tabla', 'filas' => $filas];
+    }
+
+    /**
+     * Deja en memoria las imágenes del documento, indexadas por el identificador con el
+     * que las referencia el texto.
+     *
+     * Van en base64 y no como ficheros sueltos porque los bloques se archivan para
+     * poder repetir el documento al firmar: con rutas habría que cuidar que nadie las
+     * borrara por el camino.
+     */
+    private function leerImagenes(ZipArchive $zip): void
+    {
+        $this->imagenes = [];
+        $this->leerRelaciones($zip, 'word/_rels/document.xml.rels');
+    }
+
+    /**
+     * Añade a la lista las imágenes que declare un fichero de relaciones.
+     */
+    private function leerRelaciones(ZipArchive $zip, string $fichero): void
+    {
+        $rels = $zip->getFromName($fichero);
+        if (false === $rels) {
+            return;
+        }
+
+        $dom = new DOMDocument();
+        $anterior = libxml_use_internal_errors(true);
+        $ok = $dom->loadXML($rels, LIBXML_NONET | LIBXML_NOENT);
+        libxml_clear_errors();
+        libxml_use_internal_errors($anterior);
+        if (!$ok) {
+            return;
+        }
+
+        foreach ($dom->getElementsByTagName('Relationship') as $rel) {
+            $destino = $rel->getAttribute('Target');
+            if (strpos($destino, 'media/') === false) {
+                continue;
+            }
+
+            $nombre = 'word/' . ltrim(str_replace('../', '', $destino), '/');
+            $datos = $zip->getFromName($nombre);
+            if (false === $datos || strlen($datos) > self::MAX_IMAGEN) {
+                continue;
+            }
+
+            $tipo = $this->tipoDeImagen($datos);
+            if ($tipo === '') {
+                // EMF y WMF son dibujos de Windows que aquí no se pueden pintar
+                continue;
+            }
+
+            $this->imagenes[$rel->getAttribute('Id')] = [
+                'datos' => 'data:' . $tipo . ';base64,' . base64_encode($datos),
+                'tipo' => $tipo,
+            ];
+        }
+    }
+
+    /**
+     * El formato real de la imagen, por sus primeros bytes. Vacío si no es de los que
+     * la librería de PDF sabe pintar.
+     */
+    private function tipoDeImagen(string $datos): string
+    {
+        if (strncmp($datos, "\x89PNG", 4) === 0) {
+            return 'image/png';
+        }
+
+        if (strncmp($datos, "\xFF\xD8\xFF", 3) === 0) {
+            return 'image/jpeg';
+        }
+
+        return '';
+    }
+
+    /**
+     * Las imágenes de un párrafo, con el tamaño que Word les dio.
+     *
+     * @return array[] bloques de tipo imagen
+     */
+    private function leerImagenesDe(DOMElement $p): array
+    {
+        $bloques = [];
+
+        foreach ($this->xpath->query('.//w:drawing', $p) as $dibujo) {
+            $blip = $dibujo->getElementsByTagNameNS(self::NS_A, 'blip')->item(0);
+            if (null === $blip) {
+                continue;
+            }
+
+            $id = $blip->getAttributeNS(self::NS_R, 'embed');
+            if ($id === '' || !isset($this->imagenes[$id])) {
+                continue;
+            }
+
+            $ancho = 0.0;
+            $alto = 0.0;
+            $extent = $dibujo->getElementsByTagNameNS(self::NS_WP, 'extent')->item(0);
+            if ($extent) {
+                $ancho = ((float) $extent->getAttribute('cx')) / self::EMU;
+                $alto = ((float) $extent->getAttribute('cy')) / self::EMU;
+            }
+
+            $bloques[] = [
+                'tipo' => 'imagen',
+                'datos' => $this->imagenes[$id]['datos'],
+                'ancho' => $ancho,
+                'alto' => $alto,
+                'alineacion' => $this->alineacionDe($p),
+            ];
+        }
+
+        return $bloques;
+    }
+
+    private function alineacionDe(DOMElement $p): string
+    {
+        $jc = $this->xpath->query('./w:pPr/w:jc', $p)->item(0);
+        if (null === $jc) {
+            return 'left';
+        }
+
+        $valor = $jc->getAttributeNS(self::NS, 'val');
+
+        return in_array($valor, ['center', 'right'], true) ? $valor : 'left';
+    }
+
+    /**
+     * El logotipo de la cabecera del documento.
+     *
+     * La cabecera de Word no está en document.xml sino en su propio fichero, así que
+     * un membrete corporativo se perdía entero. Se recuperan solo sus imágenes y se
+     * ponen una vez al principio: repetirlas en cada página exigiría reservar el hueco
+     * arriba y correr todo el texto, y el resultado no se parecería más al original.
+     *
+     * @return array[] bloques de imagen, vacío si no hay cabecera con logotipo
+     */
+    private function leerMembrete(ZipArchive $zip): array
+    {
+        for ($i = 1; $i <= 3; $i++) {
+            $xml = $zip->getFromName('word/header' . $i . '.xml');
+            if (false === $xml) {
+                continue;
+            }
+
+            $dom = new DOMDocument();
+            $anterior = libxml_use_internal_errors(true);
+            $ok = $dom->loadXML($xml, LIBXML_NONET | LIBXML_NOENT);
+            libxml_clear_errors();
+            libxml_use_internal_errors($anterior);
+            if (!$ok) {
+                continue;
+            }
+
+            // Las relaciones de la cabecera son las suyas, no las del documento
+            $this->leerRelaciones($zip, 'word/_rels/header' . $i . '.xml.rels');
+
+            $xpath = new DOMXPath($dom);
+            $xpath->registerNamespace('w', self::NS);
+
+            $bloques = [];
+            foreach ($xpath->query('//w:p') as $p) {
+                $anterior = $this->xpath;
+                $this->xpath = $xpath;
+                foreach ($this->leerImagenesDe($p) as $imagen) {
+                    $bloques[] = $imagen;
+                }
+                $this->xpath = $anterior;
+            }
+
+            if (!empty($bloques)) {
+                return $bloques;
+            }
+        }
+
+        return [];
     }
 }

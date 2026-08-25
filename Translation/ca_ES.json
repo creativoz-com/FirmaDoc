@@ -494,7 +494,7 @@
     "firmadoc-word-not-docx": "Només s'admeten documents .docx. Els .doc antics cal desar-los abans com a .docx.",
     "firmadoc-word-empty": "El document de Word no té contingut.",
     "firmadoc-word-failed": "No s'ha pogut convertir el document de Word a PDF.",
-    "firmadoc-word-review": "El document de Word s'ha convertit a PDF al mateix servidor. Es conserven el text, els títols, les llistes i les taules, però no la maquetació exacta ni les imatges. Revisa el PDF abans que el signin: és el que veurà el signant i el que queda segellat.",
+    "firmadoc-word-review": "El document de Word s'ha convertit a PDF al mateix servidor. Es conserven el text, els títols, les llistes, les taules i les imatges, però no la maquetació exacta: columnes, quadres de text i el peu de pàgina no es reprodueixen. Revisa el PDF abans que el signin: és el que veurà el signant i el que queda segellat.",
     "firmadoc-already-signed": "Aquest document ja està signat.",
     "firmadoc-only-when-pending": "Només es pot fer mentre la signatura està pendent.",
     "firmadoc-cannot-delete-signed": "No s'esborra una signatura ja completada: és la prova que algú va signar.",

@@ -494,7 +494,7 @@
     "firmadoc-word-not-docx": "Only .docx documents are supported. Save older .doc files as .docx first.",
     "firmadoc-word-empty": "The Word document has no content.",
     "firmadoc-word-failed": "The Word document could not be converted to PDF.",
-    "firmadoc-word-review": "The Word document was converted to PDF on the server itself. Text, headings, lists and tables are kept, but not the exact layout or images. Review the PDF before anyone signs it: it is what the signer sees and what gets sealed.",
+    "firmadoc-word-review": "The Word document was converted to PDF on the server itself. Text, headings, lists, tables and images are kept, but not the exact layout: columns, text boxes and the page footer are not reproduced. Review the PDF before anyone signs it: it is what the signer sees and what gets sealed.",
     "firmadoc-already-signed": "This document is already signed.",
     "firmadoc-only-when-pending": "Only possible while the signature is pending.",
     "firmadoc-cannot-delete-signed": "A completed signature is not deleted: it is the proof that someone signed.",
