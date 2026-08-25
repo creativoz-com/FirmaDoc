@@ -1,6 +1,9 @@
 # Registro de cambios
 
-## 1.5.2
+## 1.6
+
+FacturaScripts lee la versión con `floatval()`, así que 1.5.1 y 1.5.2 habrían sido 1.5
+para el ERP y su actualizador no habría visto el cambio. Las dos tandas van aquí.
 
 - La conversión de Word **respeta los estilos del documento**. Una plantilla seria no
   marca la negrita en cada trozo de texto: define un estilo —«Clausula»,
@@ -12,8 +15,6 @@
 - Corregido el formato anidado: cuando la negrita venía del estilo del párrafo, el texto
   acababa envuelto dos veces y la librería de PDF perdía el estado al cerrar la primera
   etiqueta, con lo que no salía en negrita ninguna de las dos veces.
-
-## 1.5.1
 
 - La conversión de Word **conserva las imágenes**, incluido el logotipo del membrete,
   que vive en un fichero aparte de Word y se perdía entero. Se respeta el tamaño y la
