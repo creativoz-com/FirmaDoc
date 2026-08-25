@@ -498,5 +498,6 @@
     "firmadoc-already-signed": "Aquest document ja està signat.",
     "firmadoc-only-when-pending": "Només es pot fer mentre la signatura està pendent.",
     "firmadoc-cannot-delete-signed": "No s'esborra una signatura ja completada: és la prova que algú va signar.",
-    "firmadoc-word-sign-here": "Signatura"
+    "firmadoc-word-sign-here": "Signatura",
+    "firmadoc-upload-created-sending": "Sol·licitud creada. El correu està sortint cap a %emails%; si alguna adreça falla, quedarà anotat al registre de l'ERP."
 }

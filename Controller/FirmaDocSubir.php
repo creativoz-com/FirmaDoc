@@ -175,9 +175,14 @@ class FirmaDocSubir extends Controller
             'telefono' => $firma->telefono_cliente,
         ]);
 
+        // Cuando el correo sale después de contestar, no se puede decir que ya está
+        // enviado: lo que se sabe es a quién va.
+        $clave = FirmaDocApi::fueDiferido()
+            ? 'firmadoc-upload-created-sending'
+            : 'firmadoc-upload-created';
         $this->mensaje = empty($this->enviadoA)
             ? Tools::lang()->trans('firmadoc-upload-created-not-sent')
-            : Tools::lang()->trans('firmadoc-upload-created', ['%emails%' => implode(', ', $this->enviadoA)]);
+            : Tools::lang()->trans($clave, ['%emails%' => implode(', ', $this->enviadoA)]);
         $this->mensajeTipo = empty($this->enviadoA) ? 'warning' : 'success';
 
         // Enviado desde la pestaña de una ficha, el sitio donde continuar es la ficha

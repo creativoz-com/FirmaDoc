@@ -498,5 +498,6 @@
     "firmadoc-already-signed": "Este documento ya está firmado.",
     "firmadoc-only-when-pending": "Solo se puede hacer mientras la firma está pendiente.",
     "firmadoc-cannot-delete-signed": "No se borra una firma ya completada: es la prueba de que alguien firmó.",
-    "firmadoc-word-sign-here": "Firma"
+    "firmadoc-word-sign-here": "Firma",
+    "firmadoc-upload-created-sending": "Solicitud creada. El correo está saliendo hacia %emails%; si alguna dirección falla, quedará anotado en el registro del ERP."
 }

@@ -180,6 +180,9 @@ class FirmaDocApi
     /** @var string[] Direcciones a las que se avisó en el último enviar() */
     private static $enviadoA = [];
 
+    /** @var bool Si el correo del último enviar() salió después de contestar */
+    private static $diferido = false;
+
     /**
      * Bloques del Word convertido, por idfile, mientras dura el envío.
      *
@@ -205,6 +208,37 @@ class FirmaDocApi
     public static function getEnviadoA(): array
     {
         return self::$enviadoA;
+    }
+
+    /**
+     * Si el correo del último enviar() se mandó después de contestar al navegador.
+     *
+     * Importa para lo que se le dice al usuario: cuando es así, las direcciones que
+     * devuelve getEnviadoA() son a las que se va a escribir, no a las que ya se
+     * escribió, y el resultado del envío queda en el registro del ERP.
+     */
+    public static function fueDiferido(): bool
+    {
+        return self::$diferido;
+    }
+
+    /**
+     * A quién le toca recibir el enlace: en secuencial solo el primero, en los demás
+     * modos todos los que estén pendientes.
+     *
+     * @param FirmaDocFirmante[] $firmantes
+     * @return string[]
+     */
+    private static function destinatariosPrevistos(array $firmantes): array
+    {
+        $destinos = [];
+        foreach ($firmantes as $f) {
+            if ($f->estado === FirmaDocFirmante::ESTADO_PENDIENTE && !empty($f->email)) {
+                $destinos[] = $f->email;
+            }
+        }
+
+        return $destinos;
     }
 
     /**
@@ -350,8 +384,19 @@ class FirmaDocApi
         }
 
         self::$enviadoA = [];
+        self::$diferido = false;
         if (false !== ($opciones['enviar_emails'] ?? true)) {
-            self::$enviadoA = FirmaDocMailer::enviarAlGenerar($firma, $adjunto, $guardados, $modo);
+            // Abrir la sesión SMTP cuesta más que todo lo demás junto, y se paga por
+            // cada destinatario. Se contesta primero y el correo sale detrás.
+            if (FirmaDocDiferido::sePuede()) {
+                self::$diferido = true;
+                self::$enviadoA = self::destinatariosPrevistos($guardados);
+                FirmaDocDiferido::tras(function () use ($firma, $adjunto, $guardados, $modo) {
+                    FirmaDocMailer::enviarAlGenerar($firma, $adjunto, $guardados, $modo);
+                });
+            } else {
+                self::$enviadoA = FirmaDocMailer::enviarAlGenerar($firma, $adjunto, $guardados, $modo);
+            }
         }
 
         return $firma;

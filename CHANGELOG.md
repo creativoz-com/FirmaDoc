@@ -2,6 +2,18 @@
 
 ## 1.6
 
+- **El correo sale después de contestar al navegador.** Abrir una sesión SMTP cuesta
+  más de medio segundo —saludo, EHLO, STARTTLS y autenticación— y se paga entera por
+  cada destinatario: con dos firmantes, la pantalla se quedaba parada más de un segundo
+  antes de pintar nada. Ahora la solicitud se crea, se contesta, y el correo sale
+  detrás. Un destinatario mal escrito deja de bloquear la pantalla y pasa a quedar
+  anotado en el registro del ERP.
+
+  No se usa la cola de trabajos del núcleo a propósito: la vacían el cron y las
+  peticiones siguientes, así que en una instalación sin cron y sin tráfico los enlaces
+  podrían tardar en salir o no salir. Esto no depende de nada externo, y donde el
+  servidor no permita cerrar la respuesta por su cuenta se envía como hasta ahora.
+
 FacturaScripts lee la versión con `floatval()`, así que 1.5.1 y 1.5.2 habrían sido 1.5
 para el ERP y su actualizador no habría visto el cambio. Las dos tandas van aquí.
 
