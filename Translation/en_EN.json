@@ -365,7 +365,7 @@
     "firmadoc-upload-title": "Send document for signature",
     "firmadoc-upload-document": "Document",
     "firmadoc-upload-file": "Documents to sign",
-    "firmadoc-upload-help": "PDF only. You can pick several: the signer accepts them all in a single act. Files are never modified.",
+    "firmadoc-upload-help": "PDF or Word (.docx). You can pick several: the signer accepts them all in a single act. Word files are converted to PDF, which is what gets signed; PDFs are never modified.",
     "firmadoc-upload-doc-title": "Title",
     "firmadoc-upload-title-placeholder": "Maintenance agreement 2026",
     "firmadoc-upload-send": "Create and send for signature",
@@ -488,5 +488,11 @@
     "firmadoc-tab-confirm-cancel": "Cancel every signing link?",
     "firmadoc-tab-dup-emails": "There are duplicate emails among the signers. Each signer needs a different email.",
     "firmadoc-tab-dup-phones": "There are duplicate phone numbers among the signers. Each signer needs a different number.",
-    "firmadoc-tab-link-copied": "Link copied to the clipboard"
+    "firmadoc-tab-link-copied": "Link copied to the clipboard",
+    "firmadoc-word-not-found": "The Word document cannot be found.",
+    "firmadoc-word-not-readable": "The Word document is damaged and could not be read.",
+    "firmadoc-word-not-docx": "Only .docx documents are supported. Save older .doc files as .docx first.",
+    "firmadoc-word-empty": "The Word document has no content.",
+    "firmadoc-word-failed": "The Word document could not be converted to PDF.",
+    "firmadoc-word-review": "The Word document was converted to PDF on the server itself. Text, headings, lists and tables are kept, but not the exact layout or images. Review the PDF before anyone signs it: it is what the signer sees and what gets sealed."
 }

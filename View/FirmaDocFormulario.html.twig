@@ -106,7 +106,7 @@
         <label class="mb-0" for="documentos">
           {{ trans('firmadoc-upload-file') }} <span class="text-danger">*</span>
         </label>
-        <input type="file" name="documentos[]" id="documentos" accept="application/pdf"
+        <input type="file" name="documentos[]" id="documentos" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                class="form-control" multiple required>
         <small class="form-text text-muted">
           {{ trans('firmadoc-upload-help') }}
@@ -116,7 +116,7 @@
 
       <div class="mb-0">
         <label class="mb-0" for="anexos">{{ trans('firmadoc-annexes') }}</label>
-        <input type="file" name="anexos[]" id="anexos" accept="application/pdf"
+        <input type="file" name="anexos[]" id="anexos" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                class="form-control" multiple>
         <small class="form-text text-muted">{{ trans('firmadoc-annexes-help') }}</small>
       </div>

@@ -365,7 +365,7 @@
     "firmadoc-upload-title": "Enviar documento a firma",
     "firmadoc-upload-document": "Documento",
     "firmadoc-upload-file": "Documentos a firmar",
-    "firmadoc-upload-help": "Solo PDF. Puedes elegir varios: el firmante los acepta todos en un mismo acto. Los ficheros no se modifican.",
+    "firmadoc-upload-help": "PDF o Word (.docx). Puedes elegir varios: el firmante los acepta todos en un mismo acto. Los Word se convierten a PDF, que es lo que se firma; los PDF no se modifican.",
     "firmadoc-upload-doc-title": "Título",
     "firmadoc-upload-title-placeholder": "Contrato de mantenimiento 2026",
     "firmadoc-upload-send": "Crear y enviar a firma",
@@ -488,5 +488,11 @@
     "firmadoc-tab-confirm-cancel": "¿Cancelar todos los enlaces de firma?",
     "firmadoc-tab-dup-emails": "Hay emails duplicados entre los firmantes. Cada firmante debe tener un email diferente.",
     "firmadoc-tab-dup-phones": "Hay teléfonos duplicados entre los firmantes. Cada firmante debe tener un teléfono diferente.",
-    "firmadoc-tab-link-copied": "Enlace copiado al portapapeles"
+    "firmadoc-tab-link-copied": "Enlace copiado al portapapeles",
+    "firmadoc-word-not-found": "No se encuentra el documento de Word.",
+    "firmadoc-word-not-readable": "El documento de Word está dañado y no se ha podido leer.",
+    "firmadoc-word-not-docx": "Solo se admiten documentos .docx. Los .doc antiguos hay que guardarlos antes como .docx.",
+    "firmadoc-word-empty": "El documento de Word no tiene contenido.",
+    "firmadoc-word-failed": "No se ha podido convertir el documento de Word a PDF.",
+    "firmadoc-word-review": "El documento de Word se ha convertido a PDF en el propio servidor. Se conservan el texto, los títulos, las listas y las tablas, pero no la maquetación exacta ni las imágenes. Revisa el PDF antes de que lo firmen: es lo que verá el firmante y lo que queda sellado."
 }

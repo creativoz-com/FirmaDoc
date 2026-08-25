@@ -17,6 +17,7 @@ use FacturaScripts\Core\UploadedFile;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocWordPdf;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocAdjunto;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
@@ -72,6 +73,7 @@ class FirmaDocSubir extends Controller
 
     /** @var int Tope real de subida, en MB: el menor entre el del plugin y el del servidor */
     public $maxSubida = 0;
+
 
     public function getPageData(): array
     {
@@ -281,6 +283,18 @@ class FirmaDocSubir extends Controller
             return null;
         }
 
+        // Un Word se convierte y lo que se guarda —y se firma— es el PDF. El firmante
+        // tiene que ver exactamente lo mismo que queda sellado, y un .docx se abre
+        // distinto en cada ordenador según fuentes, versión y plantilla.
+        if (self::tipoDeFichero($destino . $nombreDestino) === 'word') {
+            $nombrePdf = $this->convertirWord($destino, $nombreDestino);
+            if (null === $nombrePdf) {
+                @unlink($destino . $nombreDestino);
+                return null;
+            }
+            $nombreDestino = $nombrePdf;
+        }
+
         $adjunto = new AttachedFile();
         // El nombre con el que se guardó de verdad, no el original: si hubo colisión
         // son distintos y el registro apuntaría a otro fichero.
@@ -291,6 +305,46 @@ class FirmaDocSubir extends Controller
         }
 
         return $adjunto;
+    }
+
+    /**
+     * Convierte el Word recién subido en PDF y deja solo el PDF.
+     *
+     * El .docx original no se conserva a propósito: tener los dos invita a discutir
+     * cuál es el bueno, y el bueno es siempre el que se firmó.
+     */
+    private function convertirWord(string $carpeta, string $nombre): ?string
+    {
+        $conversor = new FirmaDocWordPdf();
+        $pdf = $conversor->convertir($carpeta . $nombre);
+        if (null === $pdf) {
+            $this->mensaje = Tools::lang()->trans($conversor->getError() ?: 'firmadoc-word-failed');
+            $this->mensajeTipo = 'danger';
+            return null;
+        }
+
+        $nombrePdf = pathinfo($nombre, PATHINFO_FILENAME) . '.pdf';
+        if (file_exists($carpeta . $nombrePdf)) {
+            $nombrePdf = uniqid() . '_' . $nombrePdf;
+        }
+
+        if (false === file_put_contents($carpeta . $nombrePdf, $pdf)) {
+            $this->mensaje = Tools::lang()->trans('firmadoc-upload-store-failed');
+            $this->mensajeTipo = 'danger';
+            return null;
+        }
+
+        @unlink($carpeta . $nombre);
+
+        // Sin LibreOffice la conversión es de cosecha propia y no reproduce la
+        // maquetación: hay que revisar el PDF antes de que alguien lo firme. Va por el
+        // log del núcleo y no por una variable de la pantalla porque, viniendo de la
+        // ficha de un tercero, el envío acaba redirigiendo a la solicitud creada.
+        if (false === $conversor->conLibreOffice()) {
+            Tools::log()->warning(Tools::lang()->trans('firmadoc-word-review'));
+        }
+
+        return $nombrePdf;
     }
 
     private function guardarAdjunto(int $idFirma, AttachedFile $fichero, string $tipo, int $orden): void
@@ -396,13 +450,44 @@ class FirmaDocSubir extends Controller
 
         // Se comprueba el contenido, no la extensión ni el tipo que declare el navegador:
         // ambos los elige quien sube el fichero.
-        $ruta = $fichero->getPathname();
-        $cabecera = is_readable($ruta) ? (string) file_get_contents($ruta, false, null, 0, 5) : '';
-        if (strpos($cabecera, '%PDF-') !== 0) {
+        if (self::tipoDeFichero($fichero->getPathname()) === '') {
             return 'firmadoc-upload-not-pdf';
         }
 
         return '';
+    }
+
+    /**
+     * Qué es el fichero de verdad, mirando sus primeros bytes: 'pdf', 'word' o cadena
+     * vacía si es otra cosa.
+     *
+     * Un .docx es un zip, así que además de la firma del zip hay que asomarse dentro:
+     * un .xlsx o un .zip cualquiera empiezan exactamente igual.
+     */
+    private static function tipoDeFichero(string $ruta): string
+    {
+        if (!is_readable($ruta)) {
+            return '';
+        }
+
+        $cabecera = (string) file_get_contents($ruta, false, null, 0, 4);
+        if (strpos($cabecera, '%PDF') === 0) {
+            return 'pdf';
+        }
+
+        if (strpos($cabecera, "PK\x03\x04") !== 0) {
+            return '';
+        }
+
+        $zip = new \ZipArchive();
+        if (true !== $zip->open($ruta)) {
+            return '';
+        }
+
+        $esWord = $zip->locateName('word/document.xml') !== false;
+        $zip->close();
+
+        return $esWord ? 'word' : '';
     }
 
     /**

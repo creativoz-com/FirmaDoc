@@ -15,6 +15,7 @@ use FacturaScripts\Core\Lib\ExtendedController\EditController;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocApi;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocEmail;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPDFExport;
@@ -356,36 +357,20 @@ class EditFirmaDoc extends EditController
      */
     private function generarPdfFirmado(FirmaDoc $firma): string
     {
+        // La generación vive en FirmaDocApi para que otros plugins puedan pedir el
+        // documento firmado sin entrar aquí. Los avisos son cosa de la pantalla.
+        $pdf = FirmaDocApi::pdfDeFirma($firma);
+        if (null !== $pdf) {
+            return $pdf;
+        }
+
         if (empty($firma->id) || $firma->estado !== FirmaDoc::ESTADO_FIRMADO) {
             Tools::log()->warning(Tools::lang()->trans('firmadoc-only-when-signed'));
             return '';
         }
 
-        $documento = FirmaDocDocumento::cargar($firma->tipo_doc, (int) $firma->id_doc);
-        if (null === $documento) {
-            Tools::log()->warning(Tools::lang()->trans('firmadoc-document-not-found'));
-            return '';
-        }
-
-        // Documento subido: el original no se toca, se le añade el certificado detrás
-        // si el servidor puede unir PDF; si no, se entrega el certificado aparte.
-        if ($firma->esExterno()) {
-            $ruta = FirmaDocDocumento::rutaFicheroExterno($firma);
-            if ($ruta === '') {
-                Tools::log()->warning(Tools::lang()->trans('firmadoc-document-not-found'));
-                return '';
-            }
-            $certificado = FirmaDocPDFExport::certificadoSuelto($firma, $documento);
-            return FirmaDocPdfUnir::unir($ruta, $certificado) ?? (string) file_get_contents($ruta);
-        }
-
-        $export = new FirmaDocPDFExport();
-        $export->newDoc($documento->codigo ?? '', 0, '');
-        $export->addBusinessDocPage($documento);
-        $export->addCertificadoFirma($firma, $documento);
-        // Después del certificado: así la marca alcanza también a sus páginas
-        $export->estamparMarcaLateral($firma, FirmaDocPDFExport::textoMarcaLateral($firma));
-        return $export->getDoc();
+        Tools::log()->warning(Tools::lang()->trans('firmadoc-document-not-found'));
+        return '';
     }
 
     private function nombreFicheroFirmado(FirmaDoc $firma): string

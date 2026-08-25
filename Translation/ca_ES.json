@@ -365,7 +365,7 @@
     "firmadoc-upload-title": "Enviar document a signar",
     "firmadoc-upload-document": "Document",
     "firmadoc-upload-file": "Documents a signar",
-    "firmadoc-upload-help": "Només PDF. En pots triar diversos: el signant els accepta tots en un mateix acte. Els fitxers no es modifiquen.",
+    "firmadoc-upload-help": "PDF o Word (.docx). En pots triar diversos: el signant els accepta tots en un mateix acte. Els Word es converteixen a PDF, que és el que se signa; els PDF no es modifiquen.",
     "firmadoc-upload-doc-title": "Títol",
     "firmadoc-upload-title-placeholder": "Contracte de manteniment 2026",
     "firmadoc-upload-send": "Crear i enviar a signar",
@@ -488,5 +488,11 @@
     "firmadoc-tab-confirm-cancel": "Cancel·lar tots els enllaços de signatura?",
     "firmadoc-tab-dup-emails": "Hi ha correus duplicats entre els signants. Cada signant ha de tenir un correu diferent.",
     "firmadoc-tab-dup-phones": "Hi ha telèfons duplicats entre els signants. Cada signant ha de tenir un telèfon diferent.",
-    "firmadoc-tab-link-copied": "Enllaç copiat al porta-retalls"
+    "firmadoc-tab-link-copied": "Enllaç copiat al porta-retalls",
+    "firmadoc-word-not-found": "No es troba el document de Word.",
+    "firmadoc-word-not-readable": "El document de Word està malmès i no s'ha pogut llegir.",
+    "firmadoc-word-not-docx": "Només s'admeten documents .docx. Els .doc antics cal desar-los abans com a .docx.",
+    "firmadoc-word-empty": "El document de Word no té contingut.",
+    "firmadoc-word-failed": "No s'ha pogut convertir el document de Word a PDF.",
+    "firmadoc-word-review": "El document de Word s'ha convertit a PDF al mateix servidor. Es conserven el text, els títols, les llistes i les taules, però no la maquetació exacta ni les imatges. Revisa el PDF abans que el signin: és el que veurà el signant i el que queda segellat."
 }
