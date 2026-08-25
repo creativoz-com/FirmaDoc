@@ -60,6 +60,17 @@ class FirmaDocWordLector
     /** @var array Imágenes del documento, por identificador de relación */
     private $imagenes = [];
 
+    /**
+     * Los estilos del documento, por identificador.
+     *
+     * Hacen falta porque una plantilla seria no marca la negrita en cada trozo de
+     * texto: define un estilo —«Clausula», «TituloContrato»— y lo aplica. Sin mirar
+     * aquí, un contrato entero llega plano aunque en Word se vea con sus títulos.
+     *
+     * @var array
+     */
+    private $estilos = [];
+
     /** @var string Último error, para poder explicarlo */
     private $error = '';
 
@@ -123,6 +134,7 @@ class FirmaDocWordLector
             return null;
         }
 
+        $this->leerEstilos($zip->getFromName('word/styles.xml'));
         $this->leerFormatoDeListas($zip->getFromName('word/numbering.xml'));
         $this->leerImagenes($zip);
         $membrete = $this->leerMembrete($zip);
@@ -230,11 +242,23 @@ class FirmaDocWordLector
             'trozos' => [],
         ];
 
+        $bloque['negrita'] = false;
+        $bloque['cursiva'] = false;
+        $bloque['tamano'] = 0.0;
+
         $propiedades = $this->xpath->query('./w:pPr', $p)->item(0);
         if ($propiedades) {
             $estilo = $this->xpath->query('./w:pStyle', $propiedades)->item(0);
             if ($estilo) {
-                $bloque['titulo'] = $this->nivelDeTitulo($estilo->getAttributeNS(self::NS, 'val'));
+                $id = $estilo->getAttributeNS(self::NS, 'val');
+                $definicion = $this->resolverEstilo($id);
+                $bloque['titulo'] = $definicion['titulo'];
+                $bloque['negrita'] = $definicion['negrita'];
+                $bloque['cursiva'] = $definicion['cursiva'];
+                $bloque['tamano'] = $definicion['tamano'];
+                if ($definicion['alineacion'] !== '') {
+                    $bloque['alineacion'] = $definicion['alineacion'];
+                }
             }
 
             $jc = $this->xpath->query('./w:jc', $propiedades)->item(0);
@@ -262,8 +286,14 @@ class FirmaDocWordLector
             }
         }
 
+        // Un título va en negrita aunque su estilo no lo diga: es lo que se espera de
+        // un encabezado, y así el formato viaja entero en los trozos.
+        if ($bloque['titulo'] > 0) {
+            $bloque['negrita'] = true;
+        }
+
         foreach ($this->xpath->query('./w:r | ./w:hyperlink/w:r', $p) as $run) {
-            foreach ($this->leerRun($run) as $trozo) {
+            foreach ($this->leerRun($run, $bloque) as $trozo) {
                 $bloque['trozos'][] = $trozo;
             }
         }
@@ -351,11 +381,22 @@ class FirmaDocWordLector
     /**
      * Los trozos de texto de un run, con su formato.
      */
-    private function leerRun(DOMElement $run): array
+    private function leerRun(DOMElement $run, array $base = []): array
     {
+        // Lo que diga el trozo manda sobre lo que traiga su estilo, y este sobre el
+        // formato que venga del párrafo.
+        $delEstilo = ['negrita' => false, 'cursiva' => false];
+        $rStyle = $this->xpath->query('./w:rPr/w:rStyle', $run)->item(0);
+        if ($rStyle) {
+            $definicion = $this->resolverEstilo($rStyle->getAttributeNS(self::NS, 'val'));
+            $delEstilo = ['negrita' => $definicion['negrita'], 'cursiva' => $definicion['cursiva']];
+        }
+
         $formato = [
-            'negrita' => $this->xpath->query('./w:rPr/w:b', $run)->length > 0,
-            'cursiva' => $this->xpath->query('./w:rPr/w:i', $run)->length > 0,
+            'negrita' => $this->xpath->query('./w:rPr/w:b', $run)->length > 0
+                || $delEstilo['negrita'] || !empty($base['negrita']),
+            'cursiva' => $this->xpath->query('./w:rPr/w:i', $run)->length > 0
+                || $delEstilo['cursiva'] || !empty($base['cursiva']),
             'subrayado' => $this->xpath->query('./w:rPr/w:u', $run)->length > 0,
         ];
 
@@ -398,7 +439,7 @@ class FirmaDocWordLector
             return 1;
         }
 
-        if (preg_match('/^(heading|ttulo|titulo|berschrift|titre)([1-6])$/', $limpio, $coincide)) {
+        if (preg_match('/^(heading|ttulo|titulo|berschrift|titre|encabezado)([1-6])$/', $limpio, $coincide)) {
             return (int) $coincide[2];
         }
 
@@ -601,5 +642,97 @@ class FirmaDocWordLector
         }
 
         return [];
+    }
+
+    /**
+     * Lee las definiciones de estilo del documento.
+     */
+    private function leerEstilos($xmlEstilos): void
+    {
+        $this->estilos = [];
+        if (empty($xmlEstilos)) {
+            return;
+        }
+
+        $dom = new DOMDocument();
+        $anterior = libxml_use_internal_errors(true);
+        $ok = $dom->loadXML($xmlEstilos, LIBXML_NONET | LIBXML_NOENT);
+        libxml_clear_errors();
+        libxml_use_internal_errors($anterior);
+        if (!$ok) {
+            return;
+        }
+
+        $xp = new DOMXPath($dom);
+        $xp->registerNamespace('w', self::NS);
+
+        foreach ($xp->query('//w:style') as $estilo) {
+            $id = $estilo->getAttributeNS(self::NS, 'styleId');
+            if ($id === '') {
+                continue;
+            }
+
+            $nombre = $xp->query('./w:name', $estilo)->item(0);
+            $basado = $xp->query('./w:basedOn', $estilo)->item(0);
+            $jc = $xp->query('./w:pPr/w:jc', $estilo)->item(0);
+            $sz = $xp->query('./w:rPr/w:sz', $estilo)->item(0);
+
+            $alineacion = $jc ? $jc->getAttributeNS(self::NS, 'val') : '';
+            if ($alineacion === 'both') {
+                $alineacion = 'full';
+            }
+
+            $this->estilos[$id] = [
+                // El nombre canónico es más fiable que el identificador, que Word
+                // escribe en el idioma en que se creó el documento
+                'nombre' => $nombre ? $nombre->getAttributeNS(self::NS, 'val') : $id,
+                'basado' => $basado ? $basado->getAttributeNS(self::NS, 'val') : '',
+                'negrita' => $xp->query('./w:rPr/w:b', $estilo)->length > 0,
+                'cursiva' => $xp->query('./w:rPr/w:i', $estilo)->length > 0,
+                // Word cuenta el tamaño en medios puntos
+                'tamano' => $sz ? ((float) $sz->getAttributeNS(self::NS, 'val')) / 2 : 0.0,
+                'alineacion' => in_array($alineacion, ['center', 'right', 'full'], true) ? $alineacion : '',
+            ];
+        }
+    }
+
+    /**
+     * Lo que acaba valiendo un estilo, siguiendo la cadena de los que hereda.
+     */
+    private function resolverEstilo(string $id): array
+    {
+        $resultado = [
+            'titulo' => $this->nivelDeTitulo($id),
+            'negrita' => false,
+            'cursiva' => false,
+            'tamano' => 0.0,
+            'alineacion' => '',
+        ];
+
+        $visitados = [];
+        $actual = $id;
+        while ($actual !== '' && isset($this->estilos[$actual]) && !isset($visitados[$actual])) {
+            $visitados[$actual] = true;
+            $estilo = $this->estilos[$actual];
+
+            // Un estilo puede llamarse «Clausula» y ser en realidad «heading 2»
+            if ($resultado['titulo'] === 0) {
+                $resultado['titulo'] = $this->nivelDeTitulo($estilo['nombre']);
+            }
+
+            // Lo primero que se encuentra gana: el estilo propio manda sobre el heredado
+            $resultado['negrita'] = $resultado['negrita'] || $estilo['negrita'];
+            $resultado['cursiva'] = $resultado['cursiva'] || $estilo['cursiva'];
+            if ($resultado['tamano'] === 0.0) {
+                $resultado['tamano'] = $estilo['tamano'];
+            }
+            if ($resultado['alineacion'] === '') {
+                $resultado['alineacion'] = $estilo['alineacion'];
+            }
+
+            $actual = $estilo['basado'];
+        }
+
+        return $resultado;
     }
 }

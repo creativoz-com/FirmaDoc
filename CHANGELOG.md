@@ -1,5 +1,18 @@
 # Registro de cambios
 
+## 1.5.2
+
+- La conversión de Word **respeta los estilos del documento**. Una plantilla seria no
+  marca la negrita en cada trozo de texto: define un estilo —«Clausula»,
+  «TituloContrato»— y lo aplica. Al no mirar `styles.xml`, un contrato entero llegaba
+  plano aunque en Word se viera con sus títulos. Ahora se resuelven los estilos con su
+  herencia, tanto de párrafo como de trozo, y se reconoce el nombre canónico de Word,
+  de modo que un estilo llamado «Clausula» que en realidad es «heading 2» se pinta como
+  lo que es.
+- Corregido el formato anidado: cuando la negrita venía del estilo del párrafo, el texto
+  acababa envuelto dos veces y la librería de PDF perdía el estado al cerrar la primera
+  etiqueta, con lo que no salía en negrita ninguna de las dos veces.
+
 ## 1.5.1
 
 - La conversión de Word **conserva las imágenes**, incluido el logotipo del membrete,

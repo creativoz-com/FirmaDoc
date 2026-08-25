@@ -295,11 +295,15 @@ class FirmaDocWordPdf
             $sangria = max($sangria, 20 + $nivel * 18);
         }
 
+        // El formato ya viene en cada trozo, también cuando lo marca el estilo del
+        // párrafo: volver a envolverlo aquí anidaría las etiquetas y la librería de
+        // PDF pierde el estado al cerrar la primera.
         $titulo = (int) $bloque['titulo'];
         if ($titulo > 0) {
             $tamanos = [1 => 17, 2 => 14, 3 => 12, 4 => 11, 5 => 10, 6 => 10];
+            $tamano = (float) ($bloque['tamano'] ?? 0) ?: ($tamanos[$titulo] ?? 11);
             $pdf->ezSetDy(-6);
-            $pdf->ezText('<b>' . $texto . '</b>', $tamanos[$titulo] ?? 11, [
+            $pdf->ezText($texto, $tamano, [
                 'justification' => $bloque['alineacion'],
                 'left' => $sangria,
             ]);
@@ -307,7 +311,7 @@ class FirmaDocWordPdf
             return;
         }
 
-        $pdf->ezText($texto, self::TAMANO, [
+        $pdf->ezText($texto, (float) ($bloque['tamano'] ?? 0) ?: self::TAMANO, [
             'justification' => $bloque['alineacion'],
             'left' => $sangria,
         ]);
