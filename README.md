@@ -54,16 +54,28 @@ la Secretaría General de Administración Digital del Gobierno de España bajo l
 prevalecen sobre los de este plugin para ese fichero. Código fuente y licencia originales:
 https://github.com/ctt-gob-es/clienteafirma
 
+`Assets/Fonts/DancingScript-SemiBold-*.woff2` es la tipografía **Dancing Script**, de The
+Dancing Script Project Authors, bajo **SIL Open Font License 1.1** (véase
+`Assets/Fonts/OFL.txt`). Se emplea para la firma tipográfica y va empaquetada en el plugin
+para no pedírsela a Google Fonts, que recibiría la dirección IP del firmante.
+
 ## Nombre de carpeta
 Como con todos los plugins, la carpeta se debe llamar igual que el plugin. En este caso **FirmaDoc**.
 
 ## Requisitos
 - FacturaScripts 2025 o superior
-- PHP 8.1 o superior
+- PHP 8.1 o superior, con las extensiones `zip` y `dom` (vienen de serie)
 - Para firma con certificado digital: AutoFirma instalado en el equipo del firmante
+
+No hace falta instalar nada más. La conversión de Word a PDF usa LibreOffice si el servidor
+lo tiene, y si no la resuelve el propio plugin.
 
 ## Características principales
 - Firma manuscrita y tipográfica, con identificación opcional mediante certificado digital (AutoFirma/FNMT)
+- Envío a firma de documentos propios: PDF y Word (.docx), que se convierte a PDF
+- Etiqueta `{{firma.aqui}}` en la plantilla de Word para colocar el recuadro de firma
+- Marca de firma en el margen de cada página del documento firmado
+- Pensado para que otros plugins lo usen: véase [API.md](API.md)
 - Multi-firmante: modo paralelo y secuencial
 - Certificado PDF de evidencias con datos del firmante, IP, hash y fecha
 - Portal público de verificación con código QR en el certificado
