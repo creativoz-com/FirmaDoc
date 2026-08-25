@@ -17,7 +17,7 @@ use FacturaScripts\Core\UploadedFile;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocMailer;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocUrl;
-use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocWordPdf;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocApi;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDoc;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocAdjunto;
 use FacturaScripts\Plugins\FirmaDoc\Model\FirmaDocConfig;
@@ -136,124 +136,44 @@ class FirmaDocSubir extends Controller
         $anexos = $this->request->files->getArray('anexos');
 
         if (empty($aFirmar)) {
-            $this->mensaje = Tools::lang()->trans('firmadoc-upload-no-file');
-            $this->mensajeTipo = 'danger';
+            $this->fallo('firmadoc-upload-no-file');
             return;
         }
 
         foreach (array_merge($aFirmar, $anexos) as $f) {
             $error = $this->validarFichero($f);
             if ($error !== '') {
-                $this->mensaje = Tools::lang()->trans($error);
-                $this->mensajeTipo = 'danger';
+                $this->fallo($error);
                 return;
             }
         }
 
-        $firmantes = $this->leerFirmantes();
-        if (empty($firmantes)) {
-            $this->mensaje = Tools::lang()->trans('firmadoc-upload-no-signers');
-            $this->mensajeTipo = 'danger';
+        // El envío en sí lo hace FirmaDocApi, que es la misma puerta que usan los
+        // demás plugins: así no hay dos formas de crear una solicitud de firma.
+        $firma = FirmaDocApi::enviar([
+            'ficheros' => $this->llevarATemporal($aFirmar),
+            'anexos' => $this->llevarATemporal($anexos),
+            'titulo' => $this->request->request->get('titulo', ''),
+            'firmantes' => $this->leerFirmantes(),
+            'modo' => $this->request->request->get('modo_multifirma', FirmaDoc::MODO_UNICO),
+            'codcliente' => $this->request->request->get('codcliente', ''),
+            'codproveedor' => $this->request->request->get('codproveedor', ''),
+            'nick' => $this->user->nick ?? '',
+            'mover' => true,
+        ]);
+
+        if (null === $firma) {
+            $this->fallo(FirmaDocApi::getError());
             return;
         }
 
-        $ficherosFirmar = [];
-        foreach ($aFirmar as $f) {
-            $guardado = $this->guardarFichero($f);
-            if (null === $guardado) {
-                $this->mensaje = Tools::lang()->trans('firmadoc-upload-store-failed');
-                $this->mensajeTipo = 'danger';
-                return;
-            }
-            $ficherosFirmar[] = $guardado;
-        }
-
-        $ficherosAnexos = [];
-        foreach ($anexos as $f) {
-            $guardado = $this->guardarFichero($f);
-            if (null !== $guardado) {
-                $ficherosAnexos[] = $guardado;
-            }
-        }
-
-        // El primero da nombre y sirve de referencia para las firmas de un solo fichero
-        $adjunto = $ficherosFirmar[0];
-
-        $titulo = trim($this->request->request->get('titulo', ''))
-            ?: pathinfo($adjunto->filename, PATHINFO_FILENAME);
-
-        $modoMulti = $this->request->request->get('modo_multifirma', FirmaDoc::MODO_UNICO);
-        if (count($firmantes) === 1) {
-            $modoMulti = FirmaDoc::MODO_UNICO;
-        }
-
-        $firma = new FirmaDoc();
-        $firma->clear();
-        $firma->tipo_doc = FirmaDoc::TIPO_EXTERNO;
-        // En externos, id_doc apunta al AttachedFile
-        $firma->id_doc = $adjunto->idfile;
-        $firma->titulo = mb_substr($titulo, 0, 200);
-        $firma->codigo_doc = mb_substr($adjunto->filename, 0, 30);
-        $firma->email_cliente = $firmantes[0]['email'];
-        $firma->telefono_cliente = $firmantes[0]['telefono'];
-        $firma->fecha_envio = date('d-m-Y H:i:s');
-        $firma->fecha_expiracion = date('d-m-Y H:i:s', strtotime('+' . (int) $this->config->dias_validez . ' days'));
-        $firma->estado = FirmaDoc::ESTADO_PENDIENTE;
-        $firma->modo_multifirma = $modoMulti;
-        // Cliente o proveedor, si se han indicado: es lo que permite luego encontrar
-        // el documento desde su ficha y filtrar el listado general.
-        $firma->codcliente = $this->request->request->get('codcliente', null) ?: null;
-        $firma->codproveedor = $this->request->request->get('codproveedor', null) ?: null;
-        $firma->nick = $this->user->nick ?? null;
-        // Con un solo documento, la huella es la del fichero; con paquete, la del
-        // conjunto, encadenando las huellas individuales en orden.
-        $hashes = [];
-        foreach ($ficherosFirmar as $f) {
-            $hashes[] = FirmaDoc::calcularHashFichero(FS_FOLDER . '/' . $f->path);
-        }
-        $firma->doc_hash = count($hashes) === 1
-            ? $hashes[0]
-            : FirmaDoc::calcularHashConjunto($hashes);
-        $firma->generarToken();
-
-        if (!$firma->save()) {
-            $this->mensaje = Tools::lang()->trans('firmadoc-link-generate-error');
-            $this->mensajeTipo = 'danger';
-            return;
-        }
-
-        // Los ficheros se registran siempre, también cuando solo hay uno: así la ficha,
-        // el certificado y la descarga tienen una única forma de recorrerlos.
-        $orden = 1;
-        foreach ($ficherosFirmar as $f) {
-            $this->guardarAdjunto($firma->id, $f, FirmaDocAdjunto::TIPO_FIRMAR, $orden++);
-        }
-        $orden = 1;
-        foreach ($ficherosAnexos as $f) {
-            $this->guardarAdjunto($firma->id, $f, FirmaDocAdjunto::TIPO_ANEXO, $orden++);
-        }
-
-        $guardados = [];
-        foreach ($firmantes as $idx => $datos) {
-            $f = new FirmaDocFirmante();
-            $f->id_firmadoc = $firma->id;
-            $f->orden = $idx + 1;
-            $f->nombre = $datos['nombre'];
-            $f->email = $datos['email'];
-            $f->telefono = $datos['telefono'];
-            $f->generarToken();
-            $f->estado = ($modoMulti === FirmaDoc::MODO_SECUENCIAL && $idx > 0)
-                ? FirmaDocFirmante::ESTADO_ESPERANDO
-                : FirmaDocFirmante::ESTADO_PENDIENTE;
-            if ($f->save()) {
-                $guardados[] = $f;
-            }
-        }
-
-        $this->enviadoA = FirmaDocMailer::enviarAlGenerar($firma, $adjunto, $guardados, $modoMulti);
+        $this->enviadoA = FirmaDocApi::getEnviadoA();
         $this->firmaCreada = $firma;
         $this->linkFirma = FirmaDocUrl::firma($firma->token);
-        $this->linkWhatsApp = $this->construirLinkWhatsApp($firma, $firmantes[0]);
+        $this->linkWhatsApp = $this->construirLinkWhatsApp($firma, [
+            'nombre' => $firma->getDestinatario(),
+            'telefono' => $firma->telefono_cliente,
+        ]);
 
         $this->mensaje = empty($this->enviadoA)
             ? Tools::lang()->trans('firmadoc-upload-created-not-sent')
@@ -268,96 +188,38 @@ class FirmaDocSubir extends Controller
         }
     }
 
-    /**
-     * Mueve un fichero subido a MyFiles y crea su AttachedFile.
-     */
-    private function guardarFichero($fichero): ?AttachedFile
+    private function fallo(string $clave): void
     {
-        $destino = FS_FOLDER . '/MyFiles/';
-        $nombreDestino = $fichero->getClientOriginalName();
-        if (file_exists($destino . $nombreDestino)) {
-            $nombreDestino = uniqid() . '_' . $nombreDestino;
-        }
-
-        if (!$fichero->move($destino, $nombreDestino)) {
-            return null;
-        }
-
-        // Un Word se convierte y lo que se guarda —y se firma— es el PDF. El firmante
-        // tiene que ver exactamente lo mismo que queda sellado, y un .docx se abre
-        // distinto en cada ordenador según fuentes, versión y plantilla.
-        if (self::tipoDeFichero($destino . $nombreDestino) === 'word') {
-            $nombrePdf = $this->convertirWord($destino, $nombreDestino);
-            if (null === $nombrePdf) {
-                @unlink($destino . $nombreDestino);
-                return null;
-            }
-            $nombreDestino = $nombrePdf;
-        }
-
-        $adjunto = new AttachedFile();
-        // El nombre con el que se guardó de verdad, no el original: si hubo colisión
-        // son distintos y el registro apuntaría a otro fichero.
-        $adjunto->path = $nombreDestino;
-        if (!$adjunto->save()) {
-            @unlink($destino . $nombreDestino);
-            return null;
-        }
-
-        return $adjunto;
+        $this->mensaje = Tools::lang()->trans($clave ?: 'firmadoc-upload-store-failed');
+        $this->mensajeTipo = 'danger';
     }
 
     /**
-     * Convierte el Word recién subido en PDF y deja solo el PDF.
+     * Saca los ficheros subidos del área temporal de PHP y devuelve sus rutas.
      *
-     * El .docx original no se conserva a propósito: tener los dos invita a discutir
-     * cuál es el bueno, y el bueno es siempre el que se firmó.
+     * PHP borra los ficheros subidos al terminar la petición, así que hay que moverlos
+     * antes de dárselos a la API, que trabaja con rutas y no con formularios.
+     *
+     * @return string[]
      */
-    private function convertirWord(string $carpeta, string $nombre): ?string
+    private function llevarATemporal(array $ficheros): array
     {
-        $conversor = new FirmaDocWordPdf();
-        $pdf = $conversor->convertir($carpeta . $nombre);
-        if (null === $pdf) {
-            $this->mensaje = Tools::lang()->trans($conversor->getError() ?: 'firmadoc-word-failed');
-            $this->mensajeTipo = 'danger';
-            return null;
+        $rutas = [];
+        $carpeta = FS_FOLDER . '/MyFiles/Cache';
+        Tools::folderCheckOrCreate($carpeta);
+
+        foreach ($ficheros as $fichero) {
+            if (empty($fichero)) {
+                continue;
+            }
+
+            $nombre = uniqid('firmadoc_') . '_' . $fichero->getClientOriginalName();
+            if ($fichero->move($carpeta, $nombre)) {
+                $rutas[] = $carpeta . '/' . $nombre;
+            }
         }
 
-        $nombrePdf = pathinfo($nombre, PATHINFO_FILENAME) . '.pdf';
-        if (file_exists($carpeta . $nombrePdf)) {
-            $nombrePdf = uniqid() . '_' . $nombrePdf;
-        }
-
-        if (false === file_put_contents($carpeta . $nombrePdf, $pdf)) {
-            $this->mensaje = Tools::lang()->trans('firmadoc-upload-store-failed');
-            $this->mensajeTipo = 'danger';
-            return null;
-        }
-
-        @unlink($carpeta . $nombre);
-
-        // Sin LibreOffice la conversión es de cosecha propia y no reproduce la
-        // maquetación: hay que revisar el PDF antes de que alguien lo firme. Va por el
-        // log del núcleo y no por una variable de la pantalla porque, viniendo de la
-        // ficha de un tercero, el envío acaba redirigiendo a la solicitud creada.
-        if (false === $conversor->conLibreOffice()) {
-            Tools::log()->warning(Tools::lang()->trans('firmadoc-word-review'));
-        }
-
-        return $nombrePdf;
-    }
-
-    private function guardarAdjunto(int $idFirma, AttachedFile $fichero, string $tipo, int $orden): void
-    {
-        $adjunto = new FirmaDocAdjunto();
-        $adjunto->clear();
-        $adjunto->id_firmadoc = $idFirma;
-        $adjunto->idfile = $fichero->idfile;
-        $adjunto->tipo = $tipo;
-        $adjunto->orden = $orden;
-        $adjunto->nombre = mb_substr((string) $fichero->filename, 0, 200);
-        $adjunto->doc_hash = FirmaDoc::calcularHashFichero(FS_FOLDER . '/' . $fichero->path);
-        $adjunto->save();
+        return $rutas;
     }
 
     /**

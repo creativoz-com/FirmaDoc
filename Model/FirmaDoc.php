@@ -143,6 +143,21 @@ class FirmaDoc extends ModelClass
     /** @var string|null Usuario que creó la solicitud */
     public $nick;
 
+    /**
+     * De dónde nace la solicitud, cuando la crea otro plugin: su nombre, el modelo y
+     * el identificador del registro. Sirve para que ese plugin encuentre después sus
+     * firmas sin guardarse el id por su cuenta ni mirar dentro de FirmaDoc.
+     *
+     * @var string|null
+     */
+    public $origen_plugin;
+
+    /** @var string|null */
+    public $origen_modelo;
+
+    /** @var string|null */
+    public $origen_id;
+
     /** @var string|null Código público de verificación, propio y único */
     public $codigo_verificacion;
 

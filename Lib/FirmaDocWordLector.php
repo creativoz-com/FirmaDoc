@@ -32,6 +32,14 @@ class FirmaDocWordLector
 {
     const NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
+    /**
+     * Etiqueta que marca en la plantilla dónde va el recuadro de firma.
+     *
+     * Se admite {{firma.aqui}} y {{firma.aqui:2}} para decir de qué firmante es cuando
+     * firman varios. Sin etiqueta, la firma va donde siempre: en el certificado final.
+     */
+    const ANCLA = '/\{\{\s*firma\.aqui(?::\s*(\d+))?\s*\}\}/i';
+
     /** @var DOMXPath */
     private $xpath;
 
@@ -49,6 +57,37 @@ class FirmaDocWordLector
     /**
      * Devuelve los bloques del documento, o null si no se ha podido leer.
      */
+    /**
+     * Si el documento trae alguna etiqueta de firma, sin llegar a leerlo entero.
+     *
+     * Hace falta antes de convertir: con ancla no se puede delegar en LibreOffice,
+     * porque entonces el PDF lo pinta él y aquí no se sabe dónde quedó el recuadro.
+     */
+    public static function tieneAncla(string $ruta): bool
+    {
+        if (!is_file($ruta)) {
+            return false;
+        }
+
+        $zip = new ZipArchive();
+        if (true !== $zip->open($ruta)) {
+            return false;
+        }
+
+        $documento = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        if (false === $documento) {
+            return false;
+        }
+
+        // Sobre el XML crudo: Word puede partir la etiqueta en varios runs, así que se
+        // quitan las marcas de por medio antes de buscarla.
+        $texto = preg_replace('/<[^>]+>/', '', $documento);
+
+        return (bool) preg_match(self::ANCLA, (string) $texto);
+    }
+
     public function leer(string $ruta): ?array
     {
         if (!is_file($ruta)) {
@@ -102,7 +141,9 @@ class FirmaDocWordLector
             if ($nodo->localName === 'p') {
                 $bloque = $this->leerParrafo($nodo);
                 if (null !== $bloque) {
-                    $bloques[] = $bloque;
+                    foreach ($this->partirPorAncla($bloque) as $trozo) {
+                        $bloques[] = $trozo;
+                    }
                 }
             } elseif ($nodo->localName === 'tbl') {
                 $bloques[] = $this->leerTabla($nodo);
@@ -212,6 +253,77 @@ class FirmaDocWordLector
         }
 
         return ($vacio && !$saltoDePagina) ? null : $bloque;
+    }
+
+    /**
+     * Si el párrafo lleva la etiqueta de firma, se parte en lo que va antes, el ancla
+     * y lo que va después. Word suele trocear el texto en varios runs, así que la
+     * etiqueta se busca sobre el párrafo entero y no run a run.
+     *
+     * @return array[] los bloques en que se convierte
+     */
+    private function partirPorAncla(array $bloque): array
+    {
+        $completo = implode('', array_column($bloque['trozos'], 'texto'));
+        if (!preg_match(self::ANCLA, $completo, $coincide, PREG_OFFSET_CAPTURE)) {
+            return [$bloque];
+        }
+
+        $inicio = $coincide[0][1];
+        $fin = $inicio + strlen($coincide[0][0]);
+        $firmante = isset($coincide[1][0]) && $coincide[1][0] !== '' ? (int) $coincide[1][0] : 1;
+
+        $salida = [];
+        $antes = $this->recortarTrozos($bloque['trozos'], 0, $inicio);
+        if (trim(implode('', array_column($antes, 'texto'))) !== '') {
+            $salida[] = array_merge($bloque, ['trozos' => $antes]);
+        }
+
+        $salida[] = [
+            'tipo' => 'ancla',
+            'firmante' => max(1, $firmante),
+            'alineacion' => $bloque['alineacion'],
+            'sangria' => $bloque['sangria'],
+            'salto_antes' => !empty($bloque['salto_antes']) && empty($salida),
+        ];
+
+        $despues = $this->recortarTrozos($bloque['trozos'], $fin, strlen($completo));
+        if (trim(implode('', array_column($despues, 'texto'))) !== '') {
+            $resto = array_merge($bloque, ['trozos' => $despues]);
+            unset($resto['salto_antes']);
+            $salida[] = $resto;
+        }
+
+        return $salida;
+    }
+
+    /**
+     * Los trozos que caen entre dos posiciones del texto del párrafo, conservando su
+     * formato: cortar por caracteres a secas se llevaría por delante la negrita.
+     */
+    private function recortarTrozos(array $trozos, int $desde, int $hasta): array
+    {
+        $salida = [];
+        $posicion = 0;
+
+        foreach ($trozos as $trozo) {
+            $largo = strlen($trozo['texto']);
+            $ini = max($desde, $posicion);
+            $fin = min($hasta, $posicion + $largo);
+
+            if ($fin > $ini) {
+                $salida[] = array_merge($trozo, [
+                    'texto' => substr($trozo['texto'], $ini - $posicion, $fin - $ini),
+                ]);
+            }
+
+            $posicion += $largo;
+            if ($posicion >= $hasta) {
+                break;
+            }
+        }
+
+        return $salida;
     }
 
     /**

@@ -232,6 +232,21 @@
         <type>character varying(50)</type>
         <null>YES</null>
     </column>
+    <column>
+        <name>origen_plugin</name>
+        <type>character varying(50)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>origen_modelo</name>
+        <type>character varying(50)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>origen_id</name>
+        <type>character varying(50)</type>
+        <null>YES</null>
+    </column>
         <constraint>
         <name>firmadoc_pkey</name>
         <type>PRIMARY KEY (id)</type>

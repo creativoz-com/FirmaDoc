@@ -17,6 +17,7 @@ use FacturaScripts\Core\Lib\Email\TextBlock;
 use FacturaScripts\Core\Lib\Email\TableBlock;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocEmail;
+use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocApi;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocDocumento;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocEmpresa;
 use FacturaScripts\Plugins\FirmaDoc\Lib\FirmaDocPaquete;
@@ -785,6 +786,10 @@ class FirmaDocPublic extends Controller
             } catch (\Exception $e) {
                 Tools::log()->error(Tools::lang()->trans('firmadoc-error-confirmation', ['%error%' => $e->getMessage()]));
             }
+
+            // Y se avisa a quien esté escuchando: el plugin que originó la solicitud
+            // suele tener que enterarse para archivar el documento o cerrar su circuito.
+            FirmaDocApi::avisarFirmado($this->firma);
         } else {
             $this->mensaje     = Tools::lang()->trans('firmadoc-save-error');
             $this->mensajeTipo = 'danger';

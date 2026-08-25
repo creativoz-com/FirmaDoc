@@ -40,6 +40,51 @@ class FirmaDocWordPdf
     /** @var bool Si la última conversión la hizo LibreOffice */
     private $conLibreOffice = false;
 
+    /** @var array Los bloques de la última conversión propia */
+    private $bloques = [];
+
+    /** @var array Firmas a estampar en las anclas, por número de firmante */
+    private $firmas = [];
+
+    /**
+     * Los bloques que se pintaron, para poder repetir el documento tal cual más
+     * adelante con las firmas puestas. Se guardan junto al PDF: repetirlos desde aquí
+     * da siempre el mismo resultado, mientras que volver a convertir el .docx dependería
+     * de que nadie lo hubiera tocado.
+     */
+    public function getBloques(): array
+    {
+        return $this->bloques;
+    }
+
+    /**
+     * Si el documento reserva sitio para la firma con {{firma.aqui}}.
+     */
+    public function tieneAnclas(): bool
+    {
+        foreach ($this->bloques as $bloque) {
+            if (($bloque['tipo'] ?? '') === 'ancla') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Repite el documento a partir de sus bloques, poniendo cada firma en su ancla.
+     *
+     * $firmas es [numeroDeFirmante => ['imagen' => dataUri, 'nombre' => , 'nif' => ,
+     * 'fecha' => ]]. Las anclas sin firma se quedan con su línea vacía.
+     */
+    public function repintar(array $bloques, array $firmas = []): ?string
+    {
+        $this->bloques = $bloques;
+        $this->firmas = $firmas;
+
+        return $this->pintar($bloques);
+    }
+
     public function getError(): string
     {
         return $this->error;
@@ -58,10 +103,14 @@ class FirmaDocWordPdf
         $this->error = '';
         $this->conLibreOffice = false;
 
-        $pdf = $this->conversorDelSistema($rutaDocx);
-        if (null !== $pdf) {
-            $this->conLibreOffice = true;
-            return $pdf;
+        // Con etiqueta de firma no se puede delegar: el PDF lo pintaría LibreOffice y
+        // aquí no se sabría dónde ha quedado el recuadro que hay que rellenar después.
+        if (false === FirmaDocWordLector::tieneAncla($rutaDocx)) {
+            $pdf = $this->conversorDelSistema($rutaDocx);
+            if (null !== $pdf) {
+                $this->conLibreOffice = true;
+                return $pdf;
+            }
         }
 
         $lector = new FirmaDocWordLector();
@@ -75,6 +124,8 @@ class FirmaDocWordPdf
             $this->error = 'firmadoc-word-empty';
             return null;
         }
+
+        $this->bloques = $bloques;
 
         return $this->pintar($bloques);
     }
@@ -185,6 +236,12 @@ class FirmaDocWordPdf
             if ($bloque['tipo'] === 'tabla') {
                 $contadores = [];
                 $this->pintarTabla($pdf, $bloque['filas']);
+                continue;
+            }
+
+            if ($bloque['tipo'] === 'ancla') {
+                $contadores = [];
+                $this->pintarAncla($pdf, $bloque);
                 continue;
             }
 
@@ -301,5 +358,124 @@ class FirmaDocWordPdf
             'width' => $pdf->ez['pageWidth'] - (self::MARGEN * 2),
         ]);
         $pdf->ezSetDy(-6);
+    }
+
+    /**
+     * El recuadro de firma que reserva {{firma.aqui}}.
+     *
+     * Mientras nadie ha firmado se ve la línea con su rótulo, que es lo que el firmante
+     * espera encontrar. Cuando ya hay firma, se pinta encima la rúbrica y debajo el
+     * nombre, el documento de identidad y la fecha.
+     */
+    private function pintarAncla(Cezpdf $pdf, array $bloque): void
+    {
+        $numero = (int) ($bloque['firmante'] ?? 1);
+        $firma = $this->firmas[$numero] ?? null;
+
+        $ancho = 200.0;
+        $alto = 58.0;
+        $margen = (float) self::MARGEN;
+        $anchoUtil = $pdf->ez['pageWidth'] - ($margen * 2);
+
+        // El recuadro no puede partirse entre dos páginas
+        if ($pdf->y - ($alto + 34) < $margen) {
+            $pdf->ezNewPage();
+        }
+
+        switch ($bloque['alineacion'] ?? 'left') {
+            case 'center':
+                $x = $margen + (($anchoUtil - $ancho) / 2);
+                break;
+            case 'right':
+                $x = $margen + $anchoUtil - $ancho;
+                break;
+            default:
+                $x = $margen + (float) ($bloque['sangria'] ?? 0);
+        }
+
+        $pdf->ezSetDy(-10);
+        $arriba = $pdf->y;
+        $base = $arriba - $alto;
+
+        if ($firma && !empty($firma['imagen'])) {
+            $this->pintarImagenFirma($pdf, (string) $firma['imagen'], $x, $base + 4, $ancho, $alto - 6);
+        }
+
+        // La línea sobre la que se firma
+        $pdf->setStrokeColor(0.4, 0.4, 0.4);
+        $pdf->setLineStyle(0.7);
+        $pdf->line($x, $base, $x + $ancho, $base);
+
+        $pdf->setColor(0.35, 0.35, 0.35);
+        $rotulo = $firma
+            ? trim((string) ($firma['nombre'] ?? ''))
+            : Tools::lang()->trans('firmadoc-word-sign-here');
+        $pdf->addText($x, $base - 11, self::TAMANO - 1, $this->limpiar($rotulo), $ancho, 'left');
+
+        if ($firma) {
+            $pie = [];
+            if (!empty($firma['nif'])) {
+                $pie[] = (string) $firma['nif'];
+            }
+            if (!empty($firma['fecha'])) {
+                $pie[] = (string) $firma['fecha'];
+            }
+            if (!empty($pie)) {
+                $pdf->setColor(0.5, 0.5, 0.5);
+                $pdf->addText($x, $base - 21, self::TAMANO - 2, $this->limpiar(implode('  ·  ', $pie)), $ancho, 'left');
+            }
+        }
+
+        $pdf->setColor(0, 0, 0);
+        $pdf->ezSetY($base - 30);
+    }
+
+    /**
+     * Pinta la rúbrica, que llega como data URI desde el navegador del firmante.
+     */
+    private function pintarImagenFirma(Cezpdf $pdf, string $dataUri, float $x, float $y, float $ancho, float $alto): void
+    {
+        if (strpos($dataUri, 'base64,') === false) {
+            return;
+        }
+
+        $binario = base64_decode(substr($dataUri, strpos($dataUri, 'base64,') + 7), true);
+        if (empty($binario)) {
+            return;
+        }
+
+        // La librería solo sabe leer imágenes de fichero, así que hay que dejarla en uno
+        $temporal = FS_FOLDER . '/MyFiles/Cache/firmadoc-rubrica-' . uniqid() . '.png';
+        if (false === @file_put_contents($temporal, $binario)) {
+            return;
+        }
+
+        $medidas = @getimagesize($temporal);
+        if (false === $medidas || empty($medidas[0])) {
+            @unlink($temporal);
+            return;
+        }
+
+        // Se encaja dentro del recuadro sin deformarla
+        $escala = min($ancho / $medidas[0], $alto / $medidas[1], 1.0);
+        $w = $medidas[0] * $escala;
+        $h = $medidas[1] * $escala;
+
+        try {
+            if (($medidas[2] ?? 0) === IMAGETYPE_JPEG) {
+                $pdf->addJpegFromFile($temporal, $x, $y, $w, $h);
+            } else {
+                $pdf->addPngFromFile($temporal, $x, $y, $w, $h);
+            }
+        } catch (\Throwable $e) {
+            Tools::log()->warning('FirmaDoc: ' . $e->getMessage());
+        }
+
+        @unlink($temporal);
+    }
+
+    private function limpiar(string $texto): string
+    {
+        return str_replace(['&', '<', '>'], ['&amp;', '&lt;', '&gt;'], $texto);
     }
 }
