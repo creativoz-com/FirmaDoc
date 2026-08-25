@@ -22,7 +22,7 @@
     "firmadoc-status": "Status",
     "firmadoc-status-rejected": "Rejected",
     "firmadoc-valid-until": "Valid until",
-    "firmadoc-note-original-document": "<strong>Note:</strong> The document shown below is the original without signatures. Electronic signatures will be added to the document once all signers have completed the process. This signing process has full legal validity under Regulation (EU) 910/2014 (eIDAS).",
+    "firmadoc-note-original-document": "<strong>Note:</strong> The document shown below is the original, unsigned. Once every signer is done, a certificate will be generated with the evidence of each signature —name, ID number, date, time and IP address— accompanying the document.",
     "firmadoc-view-signed-document": "View signed document",
     "firmadoc-view-document-progress": "View document (%signed%/%total% signatures)",
     "firmadoc-view-document-before-signing": "View document before signing",

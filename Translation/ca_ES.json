@@ -22,7 +22,7 @@
     "firmadoc-status": "Estat",
     "firmadoc-status-rejected": "Rebutjat",
     "firmadoc-valid-until": "Vàlid fins",
-    "firmadoc-note-original-document": "<strong>Nota:</strong> El document que es mostra a continuació correspon a l'original sense signatures. Les signatures electròniques s'incorporaran al document un cop tots els signants hagin completat el procés. El present procés de signatura té plena validesa jurídica d'acord amb el Reglament (UE) 910/2014 (eIDAS).",
+    "firmadoc-note-original-document": "<strong>Nota:</strong> El document que es mostra a continuació és l'original, sense signatures. Quan tots els signants hagin acabat, es generarà un certificat amb les evidències de cada signatura —nom, document d'identitat, data, hora i adreça IP— que acompanyarà el document.",
     "firmadoc-view-signed-document": "Veure document signat",
     "firmadoc-view-document-progress": "Veure document (%signed%/%total% signatures)",
     "firmadoc-view-document-before-signing": "Veure document abans de signar",
