@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 1.61
+
+- La nota que lee el firmante antes de firmar decía que el proceso «tiene plena validez
+  jurídica conforme al Reglamento (UE) 910/2014». Era el último resto de las
+  afirmaciones que se retiraron en la 1.4, y estaba en el peor sitio: el plugin genera
+  firma electrónica simple, no avanzada ni cualificada. Ahora dice lo que de verdad
+  ocurre: que se genera un certificado con las evidencias de cada firma.
+
 ## 1.6
 
 - **El correo sale después de contestar al navegador.** Abrir una sesión SMTP cuesta
