@@ -499,5 +499,6 @@
     "firmadoc-only-when-pending": "Only possible while the signature is pending.",
     "firmadoc-cannot-delete-signed": "A completed signature is not deleted: it is the proof that someone signed.",
     "firmadoc-word-sign-here": "Signature",
-    "firmadoc-upload-created-sending": "Request created. The email is on its way to %emails%; if any address fails, it will be recorded in the ERP log."
+    "firmadoc-upload-created-sending": "Request created. The email is on its way to %emails%; if any address fails, it will be recorded in the ERP log.",
+    "firmadoc-word-no-extension": "This server cannot open Word documents: the PHP «zip» or «dom» extensions are missing. Send the document as PDF, or ask your hosting provider to enable them."
 }

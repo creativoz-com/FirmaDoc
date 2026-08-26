@@ -91,6 +91,14 @@ class FirmaDocWordPdf
         return $this->error;
     }
 
+    /**
+     * Si este servidor puede abrir un documento de Word.
+     */
+    public static function sePuedeLeerWord(): bool
+    {
+        return class_exists('ZipArchive') && class_exists('DOMDocument');
+    }
+
     public function conLibreOffice(): bool
     {
         return $this->conLibreOffice;
@@ -103,6 +111,14 @@ class FirmaDocWordPdf
     {
         $this->error = '';
         $this->conLibreOffice = false;
+
+        // Leer un .docx pide ZipArchive y DOM. No se declaran como requisito del
+        // plugin porque solo hacen falta aquí: exigirlas al instalar dejaría fuera a
+        // quien únicamente firma facturas, que es la mayoría.
+        if (false === self::sePuedeLeerWord()) {
+            $this->error = 'firmadoc-word-no-extension';
+            return null;
+        }
 
         // Con etiqueta de firma no se puede delegar: el PDF lo pintaría LibreOffice y
         // aquí no se sabría dónde ha quedado el recuadro que hay que rellenar después.

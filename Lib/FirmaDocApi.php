@@ -536,6 +536,10 @@ class FirmaDocApi
             return false;
         }
 
+        if (false === FirmaDocWordPdf::sePuedeLeerWord()) {
+            return false;
+        }
+
         $zip = new \ZipArchive();
         if (true !== $zip->open($ruta)) {
             return false;

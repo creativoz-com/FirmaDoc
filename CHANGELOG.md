@@ -1,5 +1,18 @@
 # Registro de cambios
 
+## 1.62
+
+- **El plugin volvía a exigir extensiones de PHP que no necesita.** La 1.6 declaraba
+  `zip`, `dom`, `mbstring` y `gd` como requisito, y FacturaScripts marca incompatible
+  —y no deja instalar— cualquier plugin al que le falte una. `gd` no se usa en ninguna
+  parte: las medidas de las imágenes se leen con `getimagesize()`, que es del núcleo de
+  PHP. Y `zip` y `dom` solo hacen falta para abrir un documento de Word, así que
+  exigirlas dejaba fuera a quien únicamente firma facturas.
+
+  Ahora solo se declara `mbstring`, que sí se usa en todo el plugin. La falta de `zip`
+  o `dom` se comprueba al ir a convertir un Word, con un aviso que dice qué falta y qué
+  hacer, en lugar de bloquear la instalación entera.
+
 ## 1.61
 
 - La nota que lee el firmante antes de firmar decía que el proceso «tiene plena validez
